@@ -1,0 +1,32 @@
+{
+  "name": "gigsmash",
+  "version": "1.0.0",
+  "description": "Mashup of North Pembs gigs",
+  "scripts": {
+    "start": "node server.js",
+    "test": "start /b node server.js 7000 & timeout 2 & node --test",
+    "deploy": "serverless deploy",
+    "deploy:function": "serverless deploy function -f",
+    "deploy:dev": "serverless deploy --stage dev",
+    "deploy:prod": "serverless deploy --stage prod",
+    "logs": "serverless logs -f",
+    "invoke": "serverless invoke -f",
+    "invoke:local": "serverless invoke local -f",
+    "remove": "serverless remove",
+    "info": "serverless info",
+    "offline": "serverless offline"
+  },
+  "dependencies": {
+    "@aws-sdk/client-lambda": "^3.650.0",
+    "@aws-sdk/client-s3": "^3.650.0",
+    "cross-fetch": "^4.1.0",
+    "html-dom-parser": "^5.0.13",
+    "http": "^0.0.1-security",
+    "sharp": "^0.34.4",
+    "util": "^0.12.5"
+  },
+  "devDependencies": {
+    "serverless": "^4.20.2",
+    "serverless-offline": "^14.4.0"
+  }
+}

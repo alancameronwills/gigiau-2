@@ -1,0 +1,157 @@
+service: gigsmash
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-west-2  # London - closest to Wales
+  stage: ${opt:stage, 'dev'}
+  timeout: 30  # Default timeout (seconds)
+  memorySize: 512  # Default memory (MB)
+
+  environment:
+    S3_BUCKET_NAME: ${self:custom.bucketName}
+    STAGE: ${self:provider.stage}
+
+  iam:
+    role:
+      statements:
+        # S3 permissions for image storage
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+            - s3:HeadObject
+            - s3:ListBucket
+          Resource:
+            - arn:aws:s3:::${self:custom.bucketName}
+            - arn:aws:s3:::${self:custom.bucketName}/*
+
+        # Lambda invoke permissions for async collection
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+          Resource:
+            - arn:aws:lambda:${self:provider.region}:*:function:gigsmash-${self:provider.stage}-collectTimer
+
+custom:
+  bucketName: gigsmash-events-${self:provider.stage}
+
+functions:
+  # Event listings from venue scrapers
+  events:
+    handler: api/events/index.handler
+    timeout: 60
+    events:
+      - httpApi:
+          path: /events
+          method: get
+
+  # Main collection orchestrator
+  collect:
+    handler: api/collect/index.handler
+    timeout: 300  # 5 minutes - collection can be slow
+    memorySize: 1024
+    events:
+      - httpApi:
+          path: /collect
+          method: get
+
+  # Scheduled collection (every 5 minutes)
+  collectTimer:
+    handler: api/CollectOnTimer/index.handler
+    timeout: 300
+    memorySize: 1024
+    events:
+      - schedule:
+          rate: cron(5 * * * ? *)
+          enabled: true
+
+  # Serve cached/compressed images
+  gigpic:
+    handler: api/gigpic/index.handler
+    events:
+      - httpApi:
+          path: /gigpic
+          method: get
+
+  # On-demand image compression
+  compress:
+    handler: api/compress/index.handler
+    timeout: 60
+    events:
+      - httpApi:
+          path: /compress
+          method: get
+
+  # Manually-added events storage
+  miscevents:
+    handler: api/miscevents/index.handler
+    events:
+      - httpApi:
+          path: /miscevents
+          method: any
+
+  # Test endpoint for storage system
+  testFileStore:
+    handler: api/TestFileStore/index.handler
+    timeout: 60
+    events:
+      - httpApi:
+          path: /test
+          method: get
+
+  # Returns public URL for data storage
+  storageUrl:
+    handler: api/storageUrl/index.handler
+    events:
+      - httpApi:
+          path: /storageUrl
+          method: get
+
+resources:
+  Resources:
+    # S3 bucket for event images and data
+    GigsmashBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.bucketName}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - '*'
+              AllowedMethods:
+                - GET
+                - HEAD
+              AllowedHeaders:
+                - '*'
+              MaxAge: 3600
+
+    # Bucket policy to allow public read access to images and json
+    GigsmashBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref GigsmashBucket
+        PolicyDocument:
+          Statement:
+            - Sid: PublicReadGetObject
+              Effect: Allow
+              Principal: '*'
+              Action:
+                - s3:GetObject
+              Resource: !Sub 'arn:aws:s3:::${self:custom.bucketName}/client/*'
+
+plugins:
+  - serverless-offline  # For local testing
+
+package:
+  patterns:
+    - '!.git/**'
+    - '!.claude/**'
+    - '!node_modules/@azure/**'
+    - '!*.md'

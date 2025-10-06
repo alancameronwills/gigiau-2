@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Environment variables
+.env
+.env.*
+
+# AWS
+.serverless/
+.aws/
+
+# Azure
+local.settings.json
+.azure/
+
+# Local data
+client/
+data/
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+coverage/
+
+# Claude
+.claude/
