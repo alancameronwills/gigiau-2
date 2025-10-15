@@ -1,9 +1,9 @@
-const { TableClient, odata } = require("@azure/data-tables");
+const { TableStorer } = require("../SharedCode/tableStorer");
 
-module.exports = async function (context, myTimer) {    
-    const countersClient = TableClient.fromConnectionString(process.env.AzureWebJobsStorage, "gigiaucounters");
+async function azureFunction(context, myTimer) {
+    const countersClient = TableStorer("gigiaucounters");
 
-    const daysClient = TableClient.fromConnectionString(process.env.AzureWebJobsStorage, "gigiaucounterdays");
+    const daysClient = TableStorer("gigiaucounterdays");
 
     let counters = [];
     for await (const row of countersClient.listEntities()) {
@@ -27,4 +27,15 @@ module.exports = async function (context, myTimer) {
     }
     //context.log(JSON.stringify(daysRow));
     await daysClient.createEntity(daysRow);
+}
+
+// Export both Azure and Lambda versions
+module.exports = azureFunction;
+
+// Lambda handler (timer triggers don't need wrapper, just invoke directly)
+module.exports.handler = async (event, context) => {
+    const azureContext = {
+        log: (...args) => console.log(...args)
+    };
+    return await azureFunction(azureContext, event);
 };

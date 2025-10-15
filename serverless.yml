@@ -34,6 +34,19 @@ provider:
           Resource:
             - arn:aws:lambda:${self:provider.region}:*:function:gigsmash-${self:provider.stage}-collectTimer
 
+        # DynamoDB permissions for counters
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+            - dynamodb:Query
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaucounters
+            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaucounterdays
+
 custom:
   bucketName: gigsmash-events-${self:provider.stage}
 
@@ -41,7 +54,7 @@ functions:
   # Event listings from venue scrapers
   events:
     handler: api/events/index.handler
-    timeout: 60
+    timeout: 30
     events:
       - httpApi:
           path: /events
@@ -50,7 +63,7 @@ functions:
   # Main collection orchestrator
   collect:
     handler: api/collect/index.handler
-    timeout: 300  # 5 minutes - collection can be slow
+    timeout: 30  # HTTP API Gateway max timeout
     memorySize: 1024
     events:
       - httpApi:
@@ -78,7 +91,7 @@ functions:
   # On-demand image compression
   compress:
     handler: api/compress/index.handler
-    timeout: 60
+    timeout: 30
     events:
       - httpApi:
           path: /compress
@@ -95,7 +108,7 @@ functions:
   # Test endpoint for storage system
   testFileStore:
     handler: api/TestFileStore/index.handler
-    timeout: 60
+    timeout: 30
     events:
       - httpApi:
           path: /test
@@ -109,8 +122,59 @@ functions:
           path: /storageUrl
           method: get
 
+  # Counter API - increment and view counters
+  counter:
+    handler: api/counter/index.handler
+    events:
+      - httpApi:
+          path: /counter
+          method: get
+
+  # Counter logger - scheduled task to log counter deltas
+  counterlog:
+    handler: api/counterlog/index.handler
+    timeout: 60
+    events:
+      - schedule:
+          rate: cron(9 2 * * ? *)
+          enabled: true
+
 resources:
   Resources:
+    # DynamoDB table for counters
+    CountersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: gigiaucounters
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: partitionKey
+            AttributeType: S
+          - AttributeName: rowKey
+            AttributeType: S
+        KeySchema:
+          - AttributeName: partitionKey
+            KeyType: HASH
+          - AttributeName: rowKey
+            KeyType: RANGE
+
+    # DynamoDB table for counter history
+    CounterDaysTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: gigiaucounterdays
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: partitionKey
+            AttributeType: S
+          - AttributeName: rowKey
+            AttributeType: S
+        KeySchema:
+          - AttributeName: partitionKey
+            KeyType: HASH
+          - AttributeName: rowKey
+            KeyType: RANGE
+
     # S3 bucket for event images and data
     GigsmashBucket:
       Type: AWS::S3::Bucket

@@ -74,7 +74,23 @@ async function collect(context) {
     // Cache the images and replace their URLs with our caches:
     await replaceImageUrls(showsUnduplicated);
 
-    let package = { promoters: handlers, categories, shows: showsUnduplicated, toDo, faults, date: Date.now() };
+    // Detect platform
+    let platform = 'local';
+    if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
+        platform = 'aws';
+    } else if (process.env.AZURE_FUNCTIONS_ENVIRONMENT || process.env.WEBSITE_INSTANCE_ID) {
+        platform = 'azure';
+    }
+
+    let package = {
+        promoters: handlers,
+        categories,
+        shows: showsUnduplicated,
+        toDo,
+        faults,
+        date: Date.now(),
+        platform
+    };
 
     // Save the list:
     await storer.put("events.json", null, JSON.stringify(package, null, "  "));

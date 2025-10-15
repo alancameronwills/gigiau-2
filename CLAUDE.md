@@ -44,11 +44,15 @@ The `api/` directory contains cloud function endpoints:
 - `api/miscevents/` - Stores/retrieves manually-added events
 - `api/TestFileStore/` - Test endpoint for storage system
 - `api/storageUrl/` - Returns public URLs for data storage (S3/Azure Blob/local)
+- `api/counter/` - Counter API for tracking and incrementing named counters
+- `api/counterlog/` - Timer-triggered function that logs counter deltas (runs daily at 02:09 UTC)
 
 The `client/` directory contains front end web pages that are served from a separate server.
 
 ### Storage Abstraction
-The system supports three storage backends via `api/SharedCode/filestorer.js`:
+
+#### File Storage (`api/SharedCode/filestorer.js`)
+The system supports three storage backends for files (images, JSON):
 - **FileStorer**: Local filesystem storage (development)
 - **BlobStorer**: Azure Blob Storage (Azure Functions, when `@azure/storage-blob` is available)
 - **S3Storer**: AWS S3 (AWS Lambda, when `AWS_LAMBDA_FUNCTION_NAME` env var is set)
@@ -59,6 +63,17 @@ The `FileStorer()` factory function automatically chooses based on environment:
 3. Default → FileStorer (local)
 
 All three implement the same interface: `get()`, `put()`, `has()`, `delete()`, `purge()`.
+
+#### Table Storage (`api/SharedCode/tableStorer.js`)
+The system supports two table storage backends for counters:
+- **AzureTableStorer**: Azure Table Storage (uses `@azure/data-tables` SDK)
+- **DynamoTableStorer**: AWS DynamoDB (uses `@aws-sdk/client-dynamodb` and `@aws-sdk/lib-dynamodb`)
+
+The `TableStorer()` factory function automatically chooses based on environment:
+1. AWS Lambda → DynamoTableStorer
+2. Default → AzureTableStorer
+
+Both implement the same interface: `getEntity()`, `upsertEntity()`, `createEntity()`, `listEntities()`, `deleteEntity()`.
 
 ### Event Collection Pipeline
 1. **Scraping** (`api/events/index.js`):
@@ -164,7 +179,25 @@ Tests are embedded in `api/collect/index.js`:
 - Converts `context.res` → Lambda response format `{statusCode, body, headers}`
 - Each handler exports both Azure and Lambda versions
 
+### Counter System
+The counter system tracks usage metrics and stores historical data:
+
+#### Counter API (`api/counter/`)
+- **Increment counters**: `GET /counter?{series}={counter}` (e.g., `?analytics=pageview`)
+- **View all counters**: `GET /counter` (returns all counters with 24h deltas)
+- **View history**: `GET /counter?history=1` (returns historical daily snapshots)
+- Uses `gigiaucounters` table (partitionKey=series, rowKey=counter)
+- Stores: count, delta24 (24h change), modified timestamp
+
+#### Counter Logger (`api/counterlog/`)
+- Runs daily at 02:09 UTC (Azure: `0 9 2 * * *`, AWS: `cron(9 2 * * ? *)`)
+- Calculates 24-hour deltas for all counters
+- Updates `prev24` and `prev24date` fields in counters table
+- Snapshots daily changes to `gigiaucounterdays` table
+- Requires 22+ hour interval to avoid duplicate snapshots
+
 ### Deployment Configuration
 - **Azure**: `api/*/function.json` (timer triggers, bindings)
-- **AWS**: `serverless.yml` (all Lambda functions, API Gateway, EventBridge, S3)
+- **AWS**: `serverless.yml` (all Lambda functions, API Gateway, EventBridge, S3, DynamoDB)
 - See `AWS_DEPLOYMENT.md` for detailed AWS deployment instructions
+- serverWithClient.js is a minimal server for local testing

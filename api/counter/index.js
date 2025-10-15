@@ -1,4 +1,4 @@
-const { TableClient, odata } = require("@azure/data-tables");
+const { TableStorer } = require("../SharedCode/tableStorer");
 
 function listMethods(obj) {
   let methods = [];
@@ -6,7 +6,7 @@ function listMethods(obj) {
 
   do {
     methods = methods.concat(
-      Object.getOwnPropertyNames(currentObj).filter((prop) => 
+      Object.getOwnPropertyNames(currentObj).filter((prop) =>
         typeof obj[prop] === 'function'
       )
     );
@@ -16,9 +16,7 @@ function listMethods(obj) {
   return [...new Set(methods)]; // Remove duplicates
 }
 
-
-
-module.exports = async function (context, req) {
+async function azureFunction(context, req) {
     let series = "";
     let counter = "";
     let parameters = Object.keys(req.query);
@@ -39,9 +37,10 @@ module.exports = async function (context, req) {
         };
     }
 }
+
 async function currentCounter (context, series, counter) {
     let nowISO = new Date().toISOString().substring(0,19);
-    const tableClient = TableClient.fromConnectionString(process.env.AzureWebJobsStorage, "gigiaucounters");
+    const tableClient = TableStorer("gigiaucounters");
     // https://learn.microsoft.com/en-us/javascript/api/overview/azure/tables?view=azure-node-latest
         
     if (series && counter) {                                                                                                                                                                                                                                                                          
@@ -56,7 +55,10 @@ async function currentCounter (context, series, counter) {
         
         context.res = {
             body: {series, counter, count: total},
-            headers: {'Content-Type':"application/json"}
+            headers: {
+                'Content-Type': "application/json",
+                'Access-Control-Allow-Origin': '*'
+            }
         };
     } else {
         let totalDelta24 = {};
@@ -68,13 +70,16 @@ async function currentCounter (context, series, counter) {
       }
       context.res = {
           body: {counters: counters, totalChange24h: totalDelta24},
-          headers: {'Content-Type':"application/json"}
+          headers: {
+              'Content-Type': "application/json",
+              'Access-Control-Allow-Origin': '*'
+          }
       };
     }
 }
 
 async function history(context, series, counter) {
-    const tableClient = TableClient.fromConnectionString(process.env.AzureWebJobsStorage, "gigiaucounterdays");
+    const tableClient = TableStorer("gigiaucounterdays");
     // https://learn.microsoft.com/en-us/javascript/api/overview/azure/tables?view=azure-node-latest
     let rows = [];
     for await (const row of tableClient.listEntities()) {
@@ -82,6 +87,16 @@ async function history(context, series, counter) {
     }
       context.res = {
           body: {history: rows},
-          headers: {'Content-Type':"application/json"}
+          headers: {
+              'Content-Type': "application/json",
+              'Access-Control-Allow-Origin': '*'
+          }
       };
 }
+
+// Export both Azure and Lambda versions
+module.exports = azureFunction;
+
+// Lambda handler
+const { wrapAzureFunctionForLambda } = require("../SharedCode/lambdaWrapper");
+module.exports.handler = wrapAzureFunctionForLambda(azureFunction);
