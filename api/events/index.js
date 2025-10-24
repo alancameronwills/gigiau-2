@@ -1,3 +1,5 @@
+const DMhmformat = { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" };
+const DMYformat = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
 
 function attr(s, cls) {
     return s.match(new RegExp(`<div[^>]+class=['"]${cls}['"].*?>(.*?)</div>`, "s"))?.[1]?.replace(/<div.*?>/, "") || "";
@@ -418,7 +420,8 @@ let handlers = [];
 
 (handlers["haverhub"] = async () => {
     let source = await ftext("https://haverhub.org.uk/events/");
-    let shows = source.split(/<article /s);
+    let showList = m(source, /<div [^>]*tribe-events-pro-photo.*?>.*?<ul.*?>(.*)<\/ul>/s);
+    let shows = showList.split(/<li.*?>/s);
     let r = [];
     shows.forEach(show => {
         let ri = {};
@@ -660,13 +663,11 @@ let ticketsolve = async (tsid, categoryMap, venueNameFilter = null) => {
                                 eventAttributes[eventAttribute].push(date);
                             }
                         });
-                        const options = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
-                        const timeOptions = { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" };
 
                         let dateRange = (startDate == endDate)
-                            ? new Date(startDate).toLocaleString("en-GB", timeOptions)
-                            : "" + new Date(startDate).toLocaleString("en-GB", timeOptions)
-                            + " - " + new Date(endDate).toLocaleString("en-GB", options);
+                            ? new Date(startDate).toLocaleString("en-GB", DMhmformat)
+                            : "" + new Date(startDate).toLocaleString("en-GB", DMhmformat)
+                            + " - " + new Date(endDate).toLocaleString("en-GB", DMYformat);
                         let specials = [];
                         Object.keys(eventAttributes).forEach(k => {
                             specials.push(k + ": " + eventAttributes[k]
@@ -696,6 +697,49 @@ let ticketsolve = async (tsid, categoryMap, venueNameFilter = null) => {
     return r;
 };
 
+/* TicketSource prohibits bots from extracting info, so this doesn't work! */
+let ticketsource = async (tsid) => {
+    let html = await ftext(`https://www.ticketsource.co.uk/${tsid}`);
+    let eventsSection = m(html, /<section [^>]*id="events".*?>(.*?)<\/section>/s);
+    let eventsBlocks = eventsSection.split(/<div[^>]*eventRow.*?>/);
+    let now = new Date().valueOf();
+    let r = [];
+    eventsBlocks.forEach(block => {
+        try {
+            let titleDiv = m(block,/<div [^>]*eventTitle.*?>(.*?)<\/div>/s);
+            let title = m(titleDiv, /<span[^>]*"name".*?>(.*?)</s);
+            let dateDiv = m(block, /(<div[^>]*startDate.*?<\/div>)/s);
+            let event = {
+                title: title,
+                image: m(block, /src="(.*?)"/s),
+                url: `https://ticketsource.co.uk${m(titleDiv, /href="(.*?)"/s)}`,
+                date: dateDiv.replaceAll(/<.*?>\s*/gs,""),
+                dt: new Date(m(dateDiv, /content="(.*?)"/s)).valueOf(),
+                venue: m(block, /<div[^>]*venueAddress.*?>(.*?)<\/span>/s).replaceAll(/<.*?>/gs, ""),
+                category: title.indexOf("NTLive")>=0 ? "broadcast" : "live"
+            };
+            if (event.title && event.dt && event.dt > now) {
+                r.push(event);
+            }
+        } catch(e) {
+            r.push({e:e.toString()});
+        }
+    });
+    for (let i=0, j=1; j<r.length; j++) {
+        if (r[i].url == r[j].url) {
+            r[i].endDate = r[j].date;
+            r[j].dup = true;
+        } else {
+            i = j;
+        }
+    }
+    r.forEach(event => {
+        if (event.endDate) {
+            event.date = `${event.date} - ${event.endDate}`;
+        }
+    });
+    return r.filter(event => !event.dup);
+};
 
 (handlers["mwldan"] = async () => {
     return await ticketsolve("mwldan", { broadcast: /Broadcast/, live: /Live/, film: /Cinema|TMFS/ }, n => n.replace(/\s*[0-9]/, ""));
@@ -711,18 +755,51 @@ let ticketsolve = async (tsid, categoryMap, venueNameFilter = null) => {
 }).friendly = "St Davids Cathedral";
 */
 
+/* Doesn't work from server, prohibited by TicketSource */
+(handlers["_attic"] = async () => {
+    return await ticketsource("attic");
+}).friendly = "Attic Newcastle Emlyn";
+
+
+
+(handlers["dyfed"] = async () => {
+    let r = [];
+    try {
+    const json = await ftext("https://dyfedchoir.co.uk/events.json");
+    const strip = json.replace(/\/\*.*?\*\//gs, "").replace(/\s+/," ");
+    const eventList = JSON.parse(strip);
+    if (eventList && eventList.length>0) {
+        r = eventList.map(event => {
+            let dt = new Date(event['date-utc']);
+            return {
+                title: event.title,
+                image: event.image,
+                url: event.book,
+                venue: event.venue,
+                subtitle: event.info,
+                text: event.description,
+                dt: dt.valueOf(),
+                date: dt.toLocaleDateString("en-GB", DMhmformat),
+                category: "live"
+            }
+        });
+    }
+    } catch (e){};
+
+    return r;
+}).friendly = "Cor Dyfed";
+
 let gigio = async (source, defaultVenue = "") => {
     let r = [];
     try {
         const response = await ftext(source);
         const json = m(response, /<pre id='gigiau'.*?>(.*?)<\/pre>/s);
         const events = JSON.parse(json);
-        const options = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
         r = events.map(event => {
-            let dateRange = new Date(event.meta.dtstart).toLocaleString("en-GB", options);
+            let dateRange = new Date(event.meta.dtstart).toLocaleString("en-GB", DMYformat);
             if (event.meta.dtstart != event.meta.dtend) {
                 dateRange += " - ";
-                dateRange += new Date(event.meta.dtend).toLocaleString("en-GB", options);
+                dateRange += new Date(event.meta.dtend).toLocaleString("en-GB", DMYformat);
             }
             return {
                 title: langSplit(event.title),
@@ -733,7 +810,7 @@ let gigio = async (source, defaultVenue = "") => {
                 subtitle: langSplit(event.meta.dtinfo || ""),
                 dt: new Date(event.meta.dtstart).valueOf(),
                 date: dateRange,
-                category: "live"
+                category: (event.title.indexOf("NTLive")<0 ? "live" : "broadcast")
             }
         })
     } catch (e) { console.log(e.toString()) }
@@ -849,7 +926,7 @@ const azureHandler = async function (context, req) {
         } else {
             let kk = Object.keys(handlers);
             r = {};
-            kk.forEach(k => r[k] = handlers[k].friendly || k);
+            kk.forEach(k => { if (k.indexOf("_")!=0) {r[k] = handlers[k].friendly || k; }});
         }
         context.res = {
             body: JSON.stringify(r),
