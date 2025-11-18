@@ -116,6 +116,16 @@ Override in `serverless.yml` under `provider.environment` if needed.
 
 Detection is automatic based on environment.
 
+### Event Result Caching
+The system caches successfully scraped events per venue to improve reliability:
+- **Fresh scrapes**: When a venue scrape returns events, they are cached automatically
+- **Fallback**: If a fresh scrape returns empty or errors, the system uses the cached version
+- **Cache files**: Stored as `client/json/cache-{venueName}.json` in the storage backend
+- **Invalidation**: Use `?invalidate=venue1,venue2` to clear specific venue caches
+- **Criterion**: Only non-empty event arrays are cached; empty results trigger fallback to cache
+
+This ensures the aggregated feed remains populated even when individual venue websites are temporarily unavailable or scrapers need updating.
+
 ### API Endpoints
 
 After deployment, you'll get a base URL like:
@@ -127,6 +137,7 @@ After deployment, you'll get a base URL like:
 - `GET /collect` - Collection status
 - `GET /collect?go=1` - Start collection
 - `GET /collect?purge=1` - Purge image cache
+- `GET /collect?invalidate={venue1,venue2}` - Invalidate event cache for specific venues
 - `GET /collect?test=1` - Run tests
 - `GET /gigpic?src={url}` - Get cached image
 - `GET /compress?url={url}` - Compress image on demand

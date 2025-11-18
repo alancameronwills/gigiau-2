@@ -2,6 +2,7 @@ const util = require('util');
 const events = require("../events/index.js");
 const { FileStorer } = require("../SharedCode/filestorer.js"); // await cache.getCache(req.query.src);
 const { Cache } = require("../SharedCode/cachepic.js"); // await cache.getCache(req.query.src);
+const { EventCache } = require("../SharedCode/eventCache.js");
 //const fs = require('fs'); // synchronous
 const { pid } = require('node:process');
 
@@ -14,6 +15,7 @@ if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
 
 const cache = Cache(FileStorer("client/pix"));
 const admin = FileStorer("client");
+const eventCache = EventCache(FileStorer("client/json"), console);
 
 /**
  * Concatenate and sort the events lists from all sources.
@@ -31,15 +33,40 @@ async function collect(context) {
         try {
             let r = await events(context, { query: { venue: n } });
             if (r.forEach) {
-                eventsLists[n] = r;
-                eventsLists[n].forEach(s => s.promoter = n);
-                if (eventsLists[n].length > 0) {
+                // Check if fresh scrape returned events
+                if (r.length > 0) {
+                    eventsLists[n] = r;
+                    eventsLists[n].forEach(s => s.promoter = n);
+                    // Cache the successful result
+                    await eventCache.set(n, r);
                     delete toDo[n];
                     persistentStatus("Remaining sources: " + Object.keys(toDo).join(" "));
+                } else {
+                    // Fresh scrape returned empty - try cached version
+                    const cached = await eventCache.get(n);
+                    if (cached && cached.length > 0) {
+                        eventsLists[n] = cached;
+                        eventsLists[n].forEach(s => s.promoter = n);
+                        delete toDo[n];
+                        persistentStatus(`Using cached events for ${n}. Remaining: ` + Object.keys(toDo).join(" "));
+                    } else {
+                        // No cache available
+                        eventsLists[n] = [];
+                        fault(`No events from ${n} (fresh or cached)`);
+                    }
                 }
             } else throw r;
         } catch (e) {
-            fault(`Getting ${n} ${e.toString()}`)
+            // On error, try cached version
+            const cached = await eventCache.get(n);
+            if (cached && cached.length > 0) {
+                eventsLists[n] = cached;
+                eventsLists[n].forEach(s => s.promoter = n);
+                delete toDo[n];
+                fault(`Error getting ${n}, using cache: ${e.toString()}`);
+            } else {
+                fault(`Getting ${n} ${e.toString()}`);
+            }
         }
     }));
 
@@ -274,6 +301,14 @@ const azureHandler = async function (context, req) {
         } else if (req.query.purge) {
             const r = await cache.purge();
             await persistentStatus("Done purge " + r);
+        } else if (req.query.invalidate) {
+            // Invalidate event cache for specific venue(s)
+            const venues = req.query.invalidate.split(',');
+            for (const venue of venues) {
+                await eventCache.invalidate(venue.trim());
+            }
+            await persistentStatus(`Invalidated cache for: ${venues.join(', ')}`);
+            r.status = `Invalidated cache for: ${venues.join(', ')}`;
         } else if (req.query.url) {
             if (await collectLock(true)) {
                 try {
@@ -320,6 +355,7 @@ const azureHandler = async function (context, req) {
 module.exports = azureHandler;
 module.exports.test = { collectLock, persistentStatus };
 module.exports.collect = collect;
+module.exports.eventCache = eventCache;
 
 // AWS Lambda handler (always export for serverless-offline compatibility)
 const { wrapAzureFunctionForLambda } = require('../SharedCode/lambdaWrapper.js');
