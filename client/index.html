@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en-gb">
+<!-- 2025-11-18 -->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="gigiau.ico">
+    <link rel="apple-touch-icon" href="gigiau-fav.png">
+    <link rel="stylesheet" type="text/css" href="css/gigiau.css?v=2511182246" />
+    <meta property="og:image" content="/gigiau.png">
+    <meta property="og:title" content="Gigiau" />
+    <meta property="og:url" content="https://gigiau.uk/" />
+    <meta property="og:description" content="Events and shows - What's On around North Pembrokshire and Cardigan" />
+    <title>Gigiau - Shows in North Pembrokeshire</title>
+    <script>
+        const monthsEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthsCy = ["Ion", "Chwef", "Maw", "Ebr", "Mai", "Meh", "Gorff", "Awst", "Medi", "Hyd", "Tach", "Rhag"];
+        const monthsCyLong = ["Ionawr", "Chwefror", "Mawrth", "Ebrill", "Mai", "Mehefin", "Gorffennaf", "Awst", "Medi", "Hydref", "Tachwed", "Rhagfyr"];
+        const daysCyLong = ["dydd Sul", "dydd Llun", "dydd Mawrth", "dydd Mercher", "dydd Iau", "dydd Gwener", "dydd Sadwrn", "dydd Sul"];
+        const daysEnLong = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+        if (location.protocol == "http:" && location.host != "localhost") {
+            location.replace(location.href.replace("http:", "https:"));
+        }
+
+        var platform = "aws";
+        if (location.host == "localhost" && !location.search.match(/server/)) {
+            platform = "local";
+        } else if (location.search.match(/azure/)) {
+            platform = "azure";
+        } else if (location.search.match(/aws/)) {
+            platform = "aws";
+        }
+        var data = {
+            local: "",
+            azure:"https://pantywylan.blob.core.windows.net/gigsmash/client",
+            aws:"https://gigsmash-events-prod.s3.eu-west-2.amazonaws.com/client"
+        }[platform];
+        var api = {
+            local:"",
+            azure:"https://pantywylan-2.azurewebsites.net/api",
+            aws: "https://0qa9ai0tq5.execute-api.eu-west-2.amazonaws.com"
+        } [platform];
+
+        var events = [];
+
+        class CodeCounter {
+            static #zcode = 0;
+            static #scrollCount = 0;
+            static #counter = `${api}/counter`;
+            static #scrollCounter(d, e) {
+                if (CodeCounter.#scrollCount++ == 10) {
+                    document.removeEventListener("scroll", CodeCounter.#scrollCounter);
+                    fetch(`${CodeCounter.#counter}?z=${CodeCounter.#zcode}`); // no await - don't need the result
+                }
+            }
+            static set() {
+                CodeCounter.#zcode = (new URLSearchParams(document.location.search)).get('z') || 0;
+                document.addEventListener("scroll", CodeCounter.#scrollCounter);
+            }
+        }
+
+        function sl(en, cy) {
+            return `<span class="cy">${cy}</span><span class="en">${en}</span>`;
+        }
+
+        var lastMidnight = (() => {
+            let now = new Date();
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        })();
+
+        async function go() {
+            if (location.href.indexOf("#clear") >= 0) {
+                //To do this: Add "#clear" to the URL and then reload
+                localStorage.clear();
+            }
+
+            events = await fetch(data + "/json/events.json?v=" + Date.now()).then(r => r.json());
+            assignIds();
+            markFirstShowOfEachDate();
+            setSideButtons();
+            CategoryFilters.restore();
+            PromoterFilters.restore();
+            restoreIaith();
+            Filters.notify(showAllFiltered);
+            Favorites.restore();
+            setMonthMenu();
+
+            fixSlideOutScroll();
+
+            // Count counters
+            CodeCounter.set();
+
+            tidyHistory();  // ! after counters !
+
+            setUpInstaller();
+            setUpDisclaimer();
+
+            // Refresh at intervals. Show edition date.
+            setTimeout(() => location.reload(), 1000 * 60 * 60 * 6);
+            document.getElementById("date").innerText = "" + new Date(events.date).toISOString() + " " + (events.platform || "");
+        }
+
+        function fixSlideOutScroll() {
+            let slideout = document.querySelector(".slideout-content");
+            slideout.addEventListener("scroll", e => {
+                e.stopPropagation();
+                e.preventDefault();
+            });
+        }
+
+        function setUpInstaller() {
+            if (screen.height > 450 && screen.width > 450) return;
+            const triedInstaller = Number(localStorage.triedInstaller || 0);
+            if (triedInstaller > 2) return;
+            document.querySelector("#installButton").classList.remove("hide");
+        }
+
+        function setUpDisclaimer() {
+            if (localStorage.seenDisclaimer) return;
+            window.gigiauScroll = window.addEventListener("scroll", e => {
+                if (!window.gigiauDisclaimerTimer) {
+                    window.gigiauDisclaimerTimer = setTimeout(() => {
+                        hidePageOver();
+                        showPageOver("#disclaimer");
+                    }, 5000);
+                }
+                window.removeEventListener("scroll", window.gigiauScroll);
+            })
+            localStorage.seenDisclaimer = 1;
+        }
+
+        function assignIds() {
+            events.shows.forEach(show => {
+                show.id = show.url || show.image || "" + show.dt + show.title;
+            })
+        }
+
+        function markFirstShowOfEachDate() {
+            let groupDate = 0;
+            events.shows.forEach(show => {
+                let dt = new Date(show.dt);
+                let dtDay = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+                show.dtDayValue = dtDay.valueOf();
+                show.newDate = show.dtDayValue != groupDate;
+                groupDate = show.dtDayValue;
+            });
+        }
+
+        function pushHistory(state, tag) {
+            history.pushState(state, "", "#");
+        }
+        function tidyHistory() {
+            // Tidy URL in browser address bar: Remove old page changes; Remove counters so we don't count twice.
+            history.replaceState({ state: "tidy" }, "", location.href.replace(/#.*/, "").replace(/([?&])z=[^&#]+/, "$1").replace(/\?\&/, "?").replace(/[?&]$/, ""));
+        }
+
+        function showAllFiltered() {
+            let table = document.getElementById('table');
+            if (!table.innerText.trim()) {
+                table.innerHTML = (events.shows.map((show, ix) => ((show.dt || 0) >= lastMidnight) ? showOne(show, ix) : "").join('\n'));
+            }
+            let previousDateHeading = null;
+            let showingShowsSincePreviousDateHeading = 0;
+            const showIf = (item, condition) => {
+                if (item) {
+                    if (condition) item.classList.remove("hide");
+                    else item.classList.add("hide");
+                }
+                return condition;
+            }
+            const updatePreviousHeading = () => {
+                showIf(previousDateHeading, showingShowsSincePreviousDateHeading > 0);
+            }
+            Array.from(table.children).forEach(item => {
+                if (item.classList.contains("show")) {
+                    const show = events.shows[1 * item.id.substring('show-'.length)];
+                    if (show) {
+                        if (showIf(item, isShowVisible(show))) {
+                            showingShowsSincePreviousDateHeading++;
+                        }
+                        item.showId = show.id;
+                    }
+                } else if (item.classList.contains("dateHeading")) {
+                    updatePreviousHeading();
+                    previousDateHeading = item;
+                    showingShowsSincePreviousDateHeading = 0;
+                }
+            })
+            updatePreviousHeading();
+
+        }
+
+
+        function isShowVisible(show) {
+            return CategoryFilters.includes(show.category)
+                && PromoterFilters.includes(show.promoter)
+                && show.dt >= lastMidnight;
+        }
+
+        function scrollToMonth(m) {
+            const monthHeader = document.querySelector("#month-" + (m - 1));
+            if (monthHeader) {
+                monthHeader.scrollIntoView(true);
+                PromoterFilters.toggleMenu(true);
+            }
+        }
+
+        var previousMonth = -1;
+        var monthIdCount = 0;
+
+        function showOne(show, ix) {
+            const cacheImage = show?.image ? data + show.image.replace("client/pix/", "") : "";
+            const ifHidden = isShowVisible(show) ? "" : "hide";
+            let dateHead = "";
+            if (show.newDate) {
+                const d = new Date(show.dtDayValue);
+                const m = d.getMonth();
+                const topOfMonth = m != previousMonth && monthIdCount < 12;
+                previousMonth = m;
+                if (topOfMonth) monthIdCount++;
+                const dEn = d.toLocaleDateString(undefined, {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric"
+                });
+                const dCy = `${daysCyLong[d.getDay()]} ${d.getDate()} ${monthsCyLong[d.getMonth()]} ${d.getFullYear()}`;
+                dateHead = `<div class="dateHeading" ${topOfMonth ? `id="month-${previousMonth}"` : ""}>
+                    ${sl(dEn, dCy)}
+                    </div>`;
+            };
+            const link = show.url ? `href='${show.url}' target='_top'` : show.imagesource ? `onclick='showBigPic("${show.imagesource}")'` : "";
+
+            return dateHead
+                + `<div class='show ${ifHidden} ${show.category || ""} ${show.promoter}' id='show-${ix}'>
+                    <div class='venue' onclick='venueFilter("${show.promoter}")'>${show.venue}</div>
+                    <div class='image'><a ${link}><img src='${cacheImage}'/></a></div>
+                    <div class='title'><a ${link}>${show.title}</a></div>
+                    <div class='subtitle'>${show.subtitle || ""}</div>
+                    <div class='date'>${show.date}</div>
+                    <div class='description'>${show.text}</div>
+                </div>`;
+        }
+
+
+        class Filters {
+            static #observers = [];
+            static filters;
+            static restore() {
+                Filters.filters = JSON.parse(localStorage.getItem("filters")
+                    || '{"categoryExclude":{},"promoterExclude":{}}');
+
+                // Saving promoters across sessions too liable to lead to mistakes:
+                Filters.filters.promoterExclude = {};
+                Filters.filters.categoryExclude = {};
+            }
+            static save() {
+                localStorage.setItem("filters", JSON.stringify(Filters.filters))
+            }
+
+            /** Call every observer. Optionally add a new observer.
+             * @param {()} [f] Add f to observers
+             */
+            static notify(f) {
+                if (f) Filters.#observers.push(f);
+                Filters.#observers.forEach(f => f());
+            }
+        }
+
+        class PromoterFilters extends Filters {
+            static #previousSelection = {};
+            static selections() {
+                let filterSelections = {};
+                document.querySelectorAll(".promoterFilter").forEach(ip => {
+                    filterSelections[ip.name] = !ip.checked;
+                });
+                return filterSelections;
+            }
+
+            /** 
+             * Show or hide the main menu
+             * @param (boolean) off - Hide the menu. Otherwise, toggle visibility.
+             * @returns boolean - true if it was previously showing 
+             */
+            static toggleMenu(off) {
+                let menu = document.querySelector(".slideout");
+                if (off && !menu.classList.contains("visible")) return false;
+                let showing = menu.classList.toggle("visible");
+                let body = document.body;
+                if (showing) body.classList.add("showMenus");
+                else body.classList.remove("showMenus");
+                if (!showing) {
+                    const trueKeys = o => Object.keys(o).filter(k => o[k]);
+                    const newSelection = trueKeys(PromoterFilters.selections());
+                    if (newSelection.length != trueKeys(PromoterFilters.#previousSelection)
+                        || !newSelection.every(k => PromoterFilters.#previousSelection[k])) {
+                        PromoterFilters.save();
+                    }
+                    pushHistory({ "showPromoterMenu": true }, "./#promoter");
+                    return false;
+                } else {
+                    PromoterFilters.#previousSelection = PromoterFilters.selections();
+                    tidyHistory();
+                    return true;
+                }
+            }
+
+            static isPromoterSelected(p) {
+                return !!(document.querySelector(`input[name='${p}']`)?.checked);
+            }
+
+            static restore(promoters) {
+                Filters.restore();
+                let promoterKeys = Object.keys(events.promoters);
+                promoterKeys.sort((a, b) => a.localeCompare(b));
+                let menuItems = promoterKeys.map(p => `
+                <div><input type="checkbox" class='promoterFilter' ${Filters.filters.promoterExclude?.[p] !== true ? 'checked' : ''} name="${p}" id='${p}filter'/>
+                    <label for='${p}filter'>${events.promoters[p]}</label></div>`).join('\n');
+                document.getElementById("promoterMenu").innerHTML =
+                    `<div><div><input type="checkbox" onclick="PromoterFilters.swogglePromoters()" id="promoterSwoggle"/>
+                        <label for="promoterAll">~~~</label></div>${menuItems}</div>`;
+                menuClick("#promoterMenu>div", null);
+            }
+            static swogglePromoters() {
+                let countChecked = 0;
+                const filters = Array.from(document.querySelectorAll(".promoterFilter"));
+                filters.forEach(item => {
+                    if (item.checked) countChecked++;
+                })
+                const newState = countChecked < filters.length / 2;
+                filters.forEach(item => item.checked = newState);
+            }
+
+            static menuItemForPromoter(p) {
+                return document.querySelector(`#promoterMenu>div>div:has(input[name="${p}"])`);
+            }
+
+            static save() {
+                Filters.filters.promoterExclude = PromoterFilters.selections();
+                Filters.save();
+                Filters.notify();
+            }
+
+            static includes(p) {
+                return !Filters.filters.promoterExclude?.[p];
+            }
+        }
+
+
+        class CategoryFilters extends Filters {
+            static save() {
+                let filterSelections = {};
+                document.querySelectorAll(".filter input").forEach(ip => {
+                    filterSelections[ip.id.replace(/filter/, '')] = !ip.checked;
+                });
+                Filters.filters.categoryExclude = filterSelections;
+                Filters.save();
+                Filters.notify();
+            }
+            static restore() {
+                const filterSet = {
+                    film: sl("films", "ffilmiau"),
+                    quiz: sl("quizzes", "cwisiau"),
+                    broadcast: sl("broadcast", "darllediad"),
+                    live: sl("live", "byw")
+                };
+                let filterHtml = [];
+                Object.keys(filterSet).forEach(k => {
+                    filterHtml.push(`
+                <div class="filter">
+                    <input type="checkbox" id="${k}filter" onchange="CategoryFilters.save()" />
+                    <label for="${k}filter">${filterSet[k]}</label>
+                </div>`);
+                });
+                document.querySelector("#filters").innerHTML = filterHtml.join("\n");
+                Filters.restore();
+                menuClick(".filter ", div => {
+                    let ip = div.querySelector("input");
+                    if (!ip) return;
+                    let restoreValue = Filters.filters.categoryExclude[ip.id.replace(/filter/, "")];
+                    if (restoreValue !== null) {
+                        ip.checked = !restoreValue;
+                    }
+                });
+            }
+            static includes(c) {
+                return !Filters.filters.categoryExclude[c];
+            }
+        }
+
+        function menuClick(selector, setup = null, onclick = null) {
+            document.querySelectorAll(selector).forEach(button => {
+                button.onclick = e => {
+                    e.stopPropagation();
+                    if (onclick) {
+                        onclick(e);
+                    }
+                };
+                if (setup) {
+                    setup(button)
+                }
+            })
+        }
+
+        class Flag {
+            static #f() { return document.getElementById("flag") }
+            static flag(text) {
+                const f = Flag.#f();
+                f.innerText = text;
+                f.style.display = "block";
+                setTimeout(this.clear, 10000);
+            }
+            static clear() {
+                const f = Flag.#f();
+                f.innerText = "";
+                f.style.display = "none";
+            }
+        }
+
+        function showBigPic(src) {
+            document.querySelector("#big-pic-page").innerHTML = `<img src='${src}' style='margin:auto' onclick='hidePageOver()'/>`;
+            showPageOver("#big-pic-page");
+        }
+
+        function share() {
+            showPageOver("#share-page");
+        }
+        function about() {
+            showPageOver("#about-page");
+        }
+        function installer() {
+            showPageOver("#install-android-page");
+            localStorage.triedInstaller = Number(localStorage.triedInstaller || 0) + 1;
+        }
+
+        function showPageOver(id) {
+            document.querySelector(id).classList.add("visible");
+            pushHistory({ "showPageOver": id }, "./#" + id);
+        }
+
+        function hidePageOver() {
+            let thereWasOne = false;
+            Array.from(document.querySelectorAll(".page")).forEach(el => {
+                if (el.classList.contains("visible")) thereWasOne = true;
+                el.classList.remove("visible");
+            });
+            return thereWasOne;
+        }
+
+        window.addEventListener("popstate", e => {
+            let doneSomething = PromoterFilters.toggleMenu(true);
+            doneSomething = hidePageOver() || doneSomething;
+            if (doneSomething) {
+                e.preventDefault();
+            }
+        });
+
+        // Hide menu if we start scrolling
+        window.gigiauScrollstate = 0;
+        setInterval(() => {
+            if (window.scrollY != window.gigiauScrollstate) {
+                window.gigiauScrollstate = window.scrollY;
+                //PromoterFilters.toggleMenu(true);
+            }
+        }, 300);
+        window.addEventListener("keydown", (w, e) => {
+            PromoterFilters.toggleMenu(true);
+            hidePageOver();
+        })
+
+        function setMonthMenu() {
+            let monthButtons = [];
+            const thisMonth = new Date().getMonth();
+            for (let i = 11; i >= 0; i--) {
+                const m = (i + thisMonth) % 12 + 1;
+                monthButtons.push(`
+                    <button class="monthButton" data-month="${m}">                  
+                        ${sl(monthsEn[m - 1], monthsCy[m - 1])}
+                    </button>`);
+            }
+            const monthMenu = document.querySelector("#monthMenu");
+            monthMenu.innerHTML = monthButtons.join("\n");
+            Array.from(monthMenu.children).forEach(button =>
+                button.addEventListener("click", e => {
+                    scrollToMonth(1 * e.currentTarget.dataset['month']);
+                }));
+        }
+        function toggleIaith() {
+            document.body.classList.toggle("cy");
+            localStorage.setItem("iaith", "" + document.body.classList.contains("cy"));
+        }
+        function restoreIaith() {
+            if ("true" == (localStorage.getItem("iaith") || "")) {
+                document.body.classList.add("cy");
+            }
+        }
+        function setSideButtons() {
+            let sideButtonHtml = [];
+            sideButtonHtml.push("<div id='favoriteButton' onclick='Favorites.scrollToNext()'>&nbsp;</div>");
+            sideButtonHtml.push("<div id='searchButton' onclick='TextFilter.toggle()'>&nbsp;</div>");
+            document.querySelector("#sideButtons").innerHTML = sideButtonHtml.join("\n");
+        }
+
+        function shareLink() {
+            const title = "Gigiau - what's happening in North Pembs";
+            const text = "Opens a listing of events in the venues around Newport, Cardigan and Fishguard";
+            const url = "https://gigiau.uk?z=200";
+            if (navigator.share) {
+                navigator
+                    .share({
+                        title,
+                        text,
+                        url
+                    })
+                    .then(() => console.log("Shared!"))
+                    .catch(err => console.error(err));
+            } else {
+                window.location = `mailto:?subject=${title}&body=${url}%0A%0A${text}`;
+            }
+        }
+
+        function checkClick(event) {
+            if (event.target?.tagName == "A" && event.target.href?.indexOf("ticketsolve") > 0) {
+                let href = event.target.href.replace(/\?.*/, "");
+                event.target.href = `${href}?locale=${document.body.classList.contains("cy") ? "cy-CY" : "en-GB"}`;
+            } else if (event.target?.classList.contains("show")) {
+                if (event.target.classList.toggle("favorite")) {
+                    Favorites.add(event.target.showId);
+                } else {
+                    Favorites.remove(event.target.showId);
+                }
+
+            }
+        }
+
+        class Favorites {
+            static #favoriteSet = {};
+            static #currentFavorite = null;
+            static add(showId) {
+                if (!showId) return;
+                Favorites.#favoriteSet[showId] = true;
+                Favorites.save();
+            }
+            static remove(showId) {
+                if (!showId) return;
+                delete Favorites.#favoriteSet[showId];
+                Favorites.save();
+            }
+            static async save() {
+                localStorage.favorites = JSON.stringify(
+                    Object.keys(Favorites.#favoriteSet)
+                        .filter(k => Favorites.#favoriteSet[k]));
+            }
+            static async restore() {
+                const keys = JSON.parse(localStorage.favorites || "[]");
+                Favorites.#favoriteSet = {};
+                keys.forEach(k => { Favorites.#favoriteSet[k] = false; });
+                document.querySelectorAll(".show").forEach(show => {
+                    if (Favorites.#favoriteSet[show.showId] === false) {
+                        show.classList.add("favorite");
+                        Favorites.#favoriteSet[show.showId] = true;
+                    }
+                })
+            }
+            static scrollToNext() {
+                if (Favorites.#currentFavorite) {
+                    Favorites.#currentFavorite.classList?.remove("highlight");
+                }
+                if (Object.keys(Favorites.#favoriteSet).length == 0) {
+                    let t = document.querySelector("#table");
+                    t.classList.add("prompt-favorites");
+                    setTimeout(() => {
+                        t.classList.remove("prompt-favorites");
+                    }, 1000);
+                    return;
+                }
+                if (Favorites.#currentFavorite == null) {
+                    Favorites.#currentFavorite = document.querySelector(".show.favorite");
+                } else {
+                    let g = Favorites.#currentFavorite;
+                    do {
+                        g = g.nextElementSibling;
+                    } while (g && !g.classList?.contains("favorite"));
+                    Favorites.#currentFavorite = g;
+                }
+                if (Favorites.#currentFavorite) {
+                    Favorites.#currentFavorite.scrollIntoView(true);
+                    Favorites.#currentFavorite.classList.add("highlight");
+                }
+            }
+        }
+        class TextFilter {
+            static #searchInput = null;
+            static #searchInputTimeout = null;
+            static toggle(force) {
+                let t = document.querySelector("#searchField");
+                if (!TextFilter.#searchInput) {
+                    TextFilter.#searchInput = t.querySelector("input");
+                }
+                t.classList.toggle("reveal", force);
+                if (!t.classList.contains("reveal")) {
+                    TextFilter.clear();
+                } else {
+                    TextFilter.#searchInput.focus();
+                }
+            }
+            static clear() {
+                TextFilter.#searchInput.value = "";
+                TextFilter.go();
+            }
+            static go() {
+                if (TextFilter.#searchInputTimeout) {
+                    clearTimeout(TextFilter.#searchInputTimeout);
+                    TextFilter.#searchInputTimeout = null;
+                }
+                let v = TextFilter.#searchInput.value.trim();
+                let showsAndDates = document.querySelectorAll("#table>*");
+                if (v.length > 2) {
+                    let recentDateHeader = null;
+                    let visibleShowsInDate = false;
+                    showsAndDates.forEach(showOrDate => {
+                        if (showOrDate.classList.contains("show")) {
+                            let hideIt = !showOrDate.innerText.match(new RegExp(v, "i"));
+                            showOrDate.classList.toggle("unsearch", hideIt);
+                            if (!hideIt) visibleShowsInDate = true;
+                        } else {
+                            if (recentDateHeader) {
+                                recentDateHeader.classList.toggle("unsearch", !visibleShowsInDate);
+                            }
+                            recentDateHeader = showOrDate;
+                            visibleShowsInDate = false;
+                        }
+                    });
+                    if (recentDateHeader) {
+                        recentDateHeader.classList.toggle("unsearch", !visibleShowsInDate);
+                    }
+                } else if (v.length == 0) {
+                    showsAndDates.forEach(showOrDate => showOrDate.classList.toggle("unsearch", false));
+                    TextFilter.#searchInputTimeout = setTimeout(() => {
+                        TextFilter.toggle(false);
+                    }, 10000);
+                }
+            }
+        }
+    </script>
+</head>
+
+<body onload="go()">
+    <div id="sources"></div>
+    <div class="head"><img src="gigiau.png" /></div>
+    <div id="table" class="table" onclick="checkClick(event)"></div>
+    <div id="date"></div>
+    <div id="space">&nbsp;</div>
+    <div id="sideButtons">
+    </div>
+    <div id="searchField">
+        <input type="text" onkeyup="TextFilter.go()" />
+        <button onclick="TextFilter.clear()">X</button>
+    </div>
+    <div class="slideout" onclick="PromoterFilters.toggleMenu()">
+        <div class="slideout-content">
+            <div id="filters"></div>
+            <div id="promoterMenu"></div>
+        </div>
+    </div>
+    <div id="menu" onclick="PromoterFilters.toggleMenu(); TextFilter.toggle(false);">
+        <svg viewBox='0 0 10 8' width='18'>
+            <path d='M1 1h8M1 4h 8M1 7h8' stroke-width='2' stroke-linecap='round' />
+        </svg>
+    </div>
+    <div>
+        <div id="bottomMenu" onclick="PromoterFilters.toggleMenu()">
+            <style>
+                @media (min-width:450px) and (min-height:450px) {
+                    #installButton {
+                        display: none;
+                    }
+                }
+
+                #installButton.hide {
+                    display: none;
+                }
+            </style>
+            <button id="installButton" class="hide" onclick="installer()"><span class="en">Install</span><span
+                    class="cy">Gosod</span></button>
+            <button onclick="share()"><span class="en">Share</span><span class="cy">Rhannu</span></button>
+            <button onclick="about()"><span class="en">About</span><span class="cy">Am hyn</span></button>
+            <button onclick="toggleIaith()"><span class="en">Cymraeg</span><span class="cy">English</span></button>
+        </div>
+        <div id="monthMenu">
+
+        </div>
+    </div>
+
+    <div style="display:none">
+        <style>
+            .betabanner {
+                position: fixed;
+                bottom: 0;
+                width: 100%;
+                z-index: 200;
+                background-color: black;
+                color: lightgray;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                font-size: min(20px, max(3vw, 8px));
+            }
+
+            .betabanner>div {
+                padding: 0 20px;
+            }
+
+            .betabanner a:link {
+                color: lightblue
+            }
+        </style>
+        <div class="betabanner">
+            <div>Beta v0.84</div>
+            <div><span class='en'>Bugs, ideas:</span><span class='cy' title="chwilod">Bwgiau, syniadau:</span> <a
+                    href="mailto:info@gigiau.uk">info@gigiau.uk</a></div>
+        </div>
+    </div>
+
+    <div id="PageOver">
+        <style>
+            .page {
+                background-color: whitesmoke;
+                color: black;
+                transition: all 0.5s;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 400;
+                overflow: auto;
+                box-sizing: border-box;
+                padding: 20px;
+            }
+
+            .page:not(.visible) {
+                max-width: 0;
+                max-height: 0;
+                margin-left: -150vw;
+            }
+
+            .page>div {
+                align-self: center;
+                justify-self: center;
+            }
+
+            #big-pic-page {
+                display: flex;
+                justify-content: center;
+                background-color: rgba(0, 0, 0, 0.5);
+                max-width: 100vw;
+                max-height: 100vh;
+                padding: 0;
+                gap: 0;
+            }
+
+            #big-pic-page img {
+                max-width: calc(100vw - 10px);
+                max-height: calc(100vh - 10px);
+                margin: auto;
+            }
+
+            #install-android-page {
+                padding: 6px;
+                bottom: 0;
+                right: 0;
+                width: unset;
+                height: unset;
+            }
+
+            #disclaimer {
+                top: auto;
+                height: auto;
+                bottom: 0;
+                padding-bottom: 10vh;
+            }
+
+            @media (width>450px) and (height>450px) {
+                .phoneOnly {
+                    display: none;
+                }
+            }
+        </style>
+        <div id="big-pic-page" class="page" onclick="hidePageOver()"></div>
+        <div id="install-android-page" class="page" onclick="hidePageOver()">
+            <div>
+                Save Gigiau as an app on your phone:
+                <ul>
+                    <li>
+
+                        If yours is an <b>Android</b> phone, tap the three dots at top right.
+                        <img src="threedots.jpg" />
+
+                    </li>
+                    <li>
+                        If it's an <b>iPhone</b>, look at the the bottom of the screen and tap the box with the arrow.
+                        <img src="iphone-export.png" />
+                        Then scroll the options that appear.
+                        <br />
+                    </li>
+                    <li>
+                        Tap <b>Add to Home Screen</b>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div id="share-page" class="page" onclick="hidePageOver()">
+            <div style="grid-column:2;grid-row:1;">
+                <img src="qr-share.png?v=200" onclick="hidePageOver()" />
+            </div>
+            <div style="grid-column:2;grid-row:2;">
+                <p class="en">Show the QR code to a friend to get this app on their phone.</p>
+                <p class="cy">Dangoswch y cod QR i ffrind i gael yr ap hwn ar eu ffôn.</p>
+            </div>
+            <div style="grid-column:2;grid-row:3;">
+                <p class="en">Or send them the link:</p>
+                <p class="cy">Neu anfonwch y ddolen atynt:</p>
+                <button onclick="shareLink()"><code>https://gigiau.uk</code></button>
+            </div>
+        </div>
+        <div id="disclaimer" class="page" onclick="hidePageOver()">
+            <ul class="en">
+                <li><b>Check before you go</b><br />
+                    We can't guarantee the accuracy of all this stuff - we just collect it
+                </li>
+                <li class="phoneOnly"><b>Please don't read Gigiau while moving about</b><br />
+                    We wouldn't want to cause an accident
+                </li>
+            </ul>
+            <ul class="cy">
+                <li><b>Gwiriwch cyn i chi fynd</b><br />
+                    Ni allwn warantu cywirdeb yr holl bethau hyn - rydym yn eu casglu yn unig.
+                </li>
+                <li class="phoneOnly"><b>Peidiwch â darllen Gigiau wrth symud o gwmpas</b><br />
+                    Ni fyddem yn ei eisiau i achosi damwain
+                </li>
+            </ul>
+            <button onclick="setTimeout(()=>showPageOver('#about-page'),200)">
+                <span class="en">more...</span>
+                <span class="cy">mwy...</span>
+            </button>
+        </div>
+        <div id="about-page" class="page" onclick="hidePageOver()">
+            <div class="head"><img src="gigiau.png" /></div>
+            <div style="padding:20px;">
+                <p class="en">
+                    Gigiau brings into one place lots of the shows and events happening
+                    around North Pembrokeshire and Cardigan, with the kind co-operation of many venues and
+                    promoters.
+                </p>
+                <p class="cy">
+                    Mae <i>Gigiau</i> yn dod â llawer o'r sioeau a'r digwyddiadau sy'n digwydd yng
+                    Ngogledd Sir Benfro ac Aberteifi i un lle, gyda chydweithrediad caredig
+                    llawer o leoliadau a hyrwyddwyr.
+                </p>
+                <p class="en">
+                    We don't use cookies. We store a small amount of info on your device to remember your preferences.
+                    We don't collect information about you. We count the number of times the app is used.
+                </p>
+                <p class="cy">
+                    Dydyn ni ddim yn defnyddio cwcis.
+                    Rydyn ni'n storio ychydig bach o wybodaeth ar eich
+                    dyfais i gofio eich dewisiadau.
+                    Dydyn ni ddim yn casglu gwybodaeth amdanoch chi.
+                    Rydyn ni'n cyfrif y nifer o weithiau y defnyddir yr ap.
+                </p>
+                <p class="en">Ideas, complaints, bugs, add your gig: <a href="mailto:info@gigiau.uk">info@gigiau.uk</a>
+                </p>
+                <p class="cy">Syniadau, cwynion, bwgiau, rhoi i ni dy gig: <a
+                        href="mailto:info@gigiau.uk">info@gigiau.uk</a></p>
+                <p style="text-align:right">- Bob &amp; Alan</p>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

@@ -1,0 +1,425 @@
+:root {
+    --font: 1.2rem Arial, Geneva, Helvetica, sans-serif;
+    --menufont: 1rem Arial, Geneva, Helvetica, sans-serif;
+    box-sizing: border-box;
+}
+
+body {
+    font: var(--font);
+    margin: 0;
+}
+
+button {
+    font: var(--menufont);
+}
+
+body.cy .en {
+    display: none;
+}
+
+body:not(.cy) .cy {
+    display: none;
+}
+
+a:link {
+    color: darkblue;
+}
+
+.dateHeading {
+    width: 100%;
+    background-color: darkblue;
+    color: white;
+    font-weight: bold;
+    padding: 6px;
+    user-select: none;
+}
+
+.image img {
+    width: 200px;
+}
+
+.table {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 0px;
+    background-color: gray;
+    row-gap: 0px;
+    justify-content: flex-start;
+    padding: 0 6px;
+}
+
+.dateHeading {
+    margin: 0 -6px 2px -6px;
+    transition: all 1s;
+    overflow: hidden;
+}
+
+.dateHeading.hide, .dateHeading.unsearch  {
+    height: 0;
+    padding: 0;
+}
+
+.show.hide, .show.unsearch {
+    width: 0;
+    height: 0;
+    padding: 0;
+    margin: 0;
+}
+
+.show {
+    user-select: none;
+    cursor: pointer;
+    column-gap: 20px;
+    display: flex;
+    justify-content: start;
+    padding: 10px 5px;
+    margin: 4px 6px;
+    width: 200px;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    background-color: white;
+    border-radius: 4px;
+    transition: all 1s;
+    overflow: hidden;
+    position: relative;
+}
+
+.show.favorite::after {
+    content: "😊";
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.show.highlight {
+    outline: 4px dashed rgb(255, 174, 0);
+}
+
+.show:not(.favorite)::after {
+    content: "◯";
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+
+.table.prompt-favorites .show:not(.favorite)::after {
+    content: "🔴";
+}
+
+.show:not(.favorite):hover::after {
+    content: "😊";
+    opacity: 20%;
+}
+
+#sideButtons>div {
+    width: 2em;
+    height: 2em;
+    position: relative;
+    font-size:large;
+}
+
+#sideButtons>div::after {
+    position: absolute;
+    scale: 1.4;
+} 
+
+#favoriteButton::after {
+    content: "😊";
+}
+
+#searchButton::after {
+    content: "🔍";
+}
+
+#favoriteButton:hover::after {
+    background-color: yellow;
+    border-radius: 50%;
+}
+
+#searchButton:hover::after {
+    transform: scale(1.2);
+    border-radius: 50%;
+}
+
+.date {
+    grid-column: 2;
+    grid-row: 4;
+    font-size: small;
+}
+
+.venue {
+    cursor: pointer;
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.title {
+    font-weight: bold;
+    grid-column: 2;
+    grid-row: 2;
+}
+
+.subtitle {
+    grid-column: 2;
+    grid-row: 3;
+    font-size: small;
+}
+
+.image {
+    grid-row-start: 1;
+    grid-row-end: 5;
+    grid-column: 1;
+}
+
+.description {
+    grid-column: 3;
+    grid-row-start: 1;
+    grid-row-end: 5;
+    max-height: 100px;
+    overflow: hidden;
+    font-size: small;
+    display: none;
+}
+
+#sources {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    background-color: azure;
+    padding: 3px;
+    transition: all 2s;
+}
+
+@media (max-width:600px) {
+    .table {
+        justify-content: center;
+    }
+}
+
+@media (max-width:1200px) {
+    #sources {
+        display: none;
+    }
+}
+
+#menu {
+    position: fixed;
+    top: 0;
+    right: 0;
+    margin: 10px 10px 0 0;
+    scale: 1.2;
+}
+
+#menu>svg {
+    background-color: white;
+    border: 2px solid white;
+    border-radius: 2px;
+}
+
+#sideButtons {
+    position: fixed;
+    top: 40px;
+    right: 4px;
+    border-radius: 4px;
+    font: var(--menufont);
+    z-index: 2;
+}
+
+#searchField:not(.reveal) {
+    display:none;
+}
+#searchField {
+    top: 10px;
+    left: 25vw;
+    position: fixed;
+    background-color: dodgerblue;
+    padding: 2px;
+    border-radius: 4px;
+}
+#searchField>input {
+    width: 40vw;
+}
+
+
+#filters {
+    margin-bottom: 20px;
+}
+
+
+.table.no-film>.show.film {
+    display: none;
+}
+
+.table.no-quiz>.show.quiz {
+    display: none;
+}
+
+.table.no-live>.show.live {
+    display: none;
+}
+
+.table.no-broadcast>.show.broadcast {
+    display: none;
+}
+
+#promoterSwoggle {
+    margin: 0 0 10px -10px;
+    opacity: 0.6;
+}
+
+.slideout {
+    position: fixed;
+    display: flex;
+    flex-wrap:wrap;
+    justify-content: center;
+    align-content: center;
+    left: 0;
+    right: 0;
+    bottom: 150vh;
+    height: 100vh;
+    padding:  0;
+    transition: all 1s ease-in-out;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.page::after,
+.slideout::after {
+    content: "<";
+    background-color: blue;
+    position: absolute;
+    font-size: large;
+    bottom: max(15vh, 40px);
+    right: max(15vw, 40px);
+    border-radius: 4px;
+    color: white;
+    padding: 0 4px;
+    border: 1px solid blue;
+    transform: rotate(90deg);
+}
+.slideout-content {
+    background-color: rgba(192, 192, 192, 0.92);
+    border-radius: 6px;
+    padding: 6px;
+    margin-top: -100vh;
+    margin: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    gap: 20px;
+    align-items: center;
+    overflow-y:auto;
+    max-height: 100%;
+    max-width: 80vw;
+}
+
+.slideout.visible {
+    bottom: 0;
+}
+.slideout.visible .slideout-content {
+    margin-top: 0;
+}
+.slideout-content>div {
+    overflow-y:auto;
+}
+
+#promoterMenu {
+    padding: 10px;
+}
+
+#flag {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    background-color: black;
+    color: white;
+}
+
+.head {
+    background-color: #e4e4e4;
+    display: flex;
+}
+
+.head img {
+    max-width: 100%;
+}
+
+#monthMenu {
+    position: fixed;
+    top: 40px;
+    left: 2px;
+    width: 90vh;
+    transform: translate(-100%, 0px) rotate(-90deg);
+    transform-origin: top right;
+    contain: content;
+    display: flex;
+    justify-content: space-evenly;
+    gap: 1px;
+    background-color: dodgerblue;
+    border-radius: 6px;
+    transition: all 1s;
+    min-width: calc(12 * 2.5em);
+    font: var(--menufont);
+}
+
+body:not(.showMenus) #monthMenu {
+    margin-left: -60px;
+}
+
+.monthButton {
+    background-color: white;
+    border: 0;
+    color: darkblue;
+    padding: 8px;
+    min-width: calc(90vh / 12);
+}
+
+.monthButton>span {
+    user-select: none;
+}
+
+.monthButton:hover {
+    background-color: royalblue;
+}
+
+#menu {
+    stroke: black;
+    border-radius: 4px;
+}
+
+#menu:hover {
+    stroke: royalblue;
+}
+
+.languageButton {
+    padding: 0 min(20px, 3vw);
+}
+
+
+#bottomMenu {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    margin-bottom: -100%;
+    background-color: white;
+    display: flex;
+    justify-content: space-around;
+    z-index: 300;
+    padding: 6px 0 12px 0;
+    transition: all 1s;
+}
+
+body.showMenus #bottomMenu {
+    margin-bottom: 0;
+}
+
+#bottomMenu button {
+    background-color: white;
+    color: black;
+    border-top: 0;
+    border-bottom: 0;
+    border-width: 1px;
+    border-color: dodgerblue;
+    font: var(--menufont);
+}
