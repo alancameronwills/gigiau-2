@@ -234,21 +234,21 @@ let handlers = [];
         //console.log(source);
         let lmItems = m(source, /loadMoreItems:(.*?)\]\]\]/s);
         let lm = {
-            data :  [...lmItems.matchAll(/\[([0-9]+)/g)].map(x => `data%5B%5D=${x[1]}`).join('&'),
-            token : m(source, /loadMoreAjaxToken: *"(.*?)"/),
-            url : m(source, /loadMoreAjaxUrl: *"(.*)"/),
-            action : m(source, /loadMoreAjaxAction: *"(.*)"/),
-            gridId : m(source, /gridID: *([0-9]+)/)
+            data: [...lmItems.matchAll(/\[([0-9]+)/g)].map(x => `data%5B%5D=${x[1]}`).join('&'),
+            token: m(source, /loadMoreAjaxToken: *"(.*?)"/),
+            url: m(source, /loadMoreAjaxUrl: *"(.*)"/),
+            action: m(source, /loadMoreAjaxAction: *"(.*)"/),
+            gridId: m(source, /gridID: *([0-9]+)/)
         }
         //console.log(JSON.stringify(lm));
         if (lm.action && lm.token) {
             let payLoad = `action=${lm.action}&client_action=load_more_items&token=${lm.token}&${lm.data}&gridid=${lm.gridId}`;
             //console.log(payLoad);
-            let more = await fetch (lm.url, {
+            let more = await fetch(lm.url, {
                 method: "POST",
-                headers: {"Content-Type" : "application/x-www-form-urlencoded; charset=UTF-8"},
+                headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
                 body: payLoad
-            }).then(r=>r.json());
+            }).then(r => r.json());
             //console.log(more);
             if (more.data) {
                 extract(more.data);
@@ -264,6 +264,23 @@ let handlers = [];
     try {
         let root = "https://narberthjazz.wales";
         let source = await ftext(root + "/events");
+        let eventsText = m(source, /<script [^>]*type="application[^>]*json".*?>(.*?)<\/script>/s);
+        let events = JSON.parse(eventsText);
+        r = events.filter(event => event["@type"] == "Event" && event["name"].indexOf("Membership") < 0)
+            .map(event => {
+                return {
+                    title: event.name,
+                    text: event.description,
+                    url: event.url,
+                    category: "live",
+                    date: event.startDate?.substring(0, 16).replace("T", " "),
+                    dt: new Date(event.startDate).valueOf() || 0,
+                    venue: `${event.location?.name || "Plas Hotel"} ${event.location?.addressLocality || "Narberth"}`,
+                    image: "https://narberthjazz.wales/wp-content/uploads/2022/11/cropped-header-new-mobile-jpg-768x221.jpg"
+                }
+            }
+            );
+        /*
         let eventSection = m(source, /<section[^>]+events.*?>(.*)<\/section>/s);
         let events = eventSection.match(/<article.*?>.*?<\/article>/gs);
         events.forEach(event => {
@@ -285,23 +302,24 @@ let handlers = [];
                 r.push(ri);
             }
         });
+        */
     } catch (e) { return { e: e.toString() } }
     // Get images from separate event pages
     await Promise.all(r.map(async ri => {
         try {
             //console.log("event: " + ri.title);
             let eventFile = await ftext(ri.url);
-            let content = m(eventFile,/<div[^>]*tribe-events-single-event-description.*?>(.*?)<\/div>/s);
+            let content = m(eventFile, /<div[^>]*tribe-events-single-event-description.*?>(.*?)<\/div>/s);
             //console.log(content);
             let img = m(content, /<img(.*?)>/s);
-            let src = m(img,/src=['"](.*?)['"]/s);
+            let src = m(img, /src=['"](.*?)['"]/s);
             //console.log(`${eventFile.length} ${content.length}  ${img}   === ${src}`);
             if (src) {
                 ri.image = src;
             }
         } catch (e) {
             //console.log(e);
-         }
+        }
     }));
     return r;
 }).friendly = "Narberth Jazz";
@@ -742,26 +760,26 @@ let ticketsource = async (tsid) => {
     let r = [];
     eventsBlocks.forEach(block => {
         try {
-            let titleDiv = m(block,/<div [^>]*eventTitle.*?>(.*?)<\/div>/s);
+            let titleDiv = m(block, /<div [^>]*eventTitle.*?>(.*?)<\/div>/s);
             let title = m(titleDiv, /<span[^>]*"name".*?>(.*?)</s);
             let dateDiv = m(block, /(<div[^>]*startDate.*?<\/div>)/s);
             let event = {
                 title: title,
                 image: m(block, /src="(.*?)"/s),
                 url: `https://ticketsource.co.uk${m(titleDiv, /href="(.*?)"/s)}`,
-                date: dateDiv.replaceAll(/<.*?>\s*/gs,""),
+                date: dateDiv.replaceAll(/<.*?>\s*/gs, ""),
                 dt: new Date(m(dateDiv, /content="(.*?)"/s)).valueOf(),
                 venue: m(block, /<div[^>]*venueAddress.*?>(.*?)<\/span>/s).replaceAll(/<.*?>/gs, ""),
-                category: title.indexOf("NTLive")>=0 ? "broadcast" : "live"
+                category: title.indexOf("NTLive") >= 0 ? "broadcast" : "live"
             };
             if (event.title && event.dt && event.dt > now) {
                 r.push(event);
             }
-        } catch(e) {
-            r.push({e:e.toString()});
+        } catch (e) {
+            r.push({ e: e.toString() });
         }
     });
-    for (let i=0, j=1; j<r.length; j++) {
+    for (let i = 0, j = 1; j < r.length; j++) {
         if (r[i].url == r[j].url) {
             r[i].endDate = r[j].date;
             r[j].dup = true;
@@ -801,26 +819,26 @@ let ticketsource = async (tsid) => {
 (handlers["dyfed"] = async () => {
     let r = [];
     try {
-    const json = await ftext("https://dyfedchoir.co.uk/events.json");
-    const strip = json.replace(/\/\*.*?\*\//gs, "").replace(/\s+/," ");
-    const eventList = JSON.parse(strip);
-    if (eventList && eventList.length>0) {
-        r = eventList.map(event => {
-            let dt = new Date(event['date-utc']);
-            return {
-                title: event.title,
-                image: event.image,
-                url: event.book,
-                venue: event.venue,
-                subtitle: event.info,
-                text: event.description,
-                dt: dt.valueOf(),
-                date: dt.toLocaleDateString("en-GB", DMhmformat),
-                category: "live"
-            }
-        });
-    }
-    } catch (e){};
+        const json = await ftext("https://dyfedchoir.co.uk/events.json");
+        const strip = json.replace(/\/\*.*?\*\//gs, "").replace(/\s+/, " ");
+        const eventList = JSON.parse(strip);
+        if (eventList && eventList.length > 0) {
+            r = eventList.map(event => {
+                let dt = new Date(event['date-utc']);
+                return {
+                    title: event.title,
+                    image: event.image,
+                    url: event.book,
+                    venue: event.venue,
+                    subtitle: event.info,
+                    text: event.description,
+                    dt: dt.valueOf(),
+                    date: dt.toLocaleDateString("en-GB", DMhmformat),
+                    category: "live"
+                }
+            });
+        }
+    } catch (e) { };
 
     return r;
 }).friendly = "Cor Dyfed";
@@ -846,7 +864,7 @@ let gigio = async (source, defaultVenue = "") => {
                 subtitle: langSplit(event.meta.dtinfo || ""),
                 dt: new Date(event.meta.dtstart).valueOf(),
                 date: dateRange,
-                category: (event.title.indexOf("NTLive")<0 ? "live" : "broadcast")
+                category: (event.title.indexOf("NTLive") < 0 ? "live" : "broadcast")
             }
         })
     } catch (e) { console.log(e.toString()) }
@@ -962,7 +980,7 @@ const azureHandler = async function (context, req) {
         } else {
             let kk = Object.keys(handlers);
             r = {};
-            kk.forEach(k => { if (k.indexOf("_")!=0) {r[k] = handlers[k].friendly || k; }});
+            kk.forEach(k => { if (k.indexOf("_") != 0) { r[k] = handlers[k].friendly || k; } });
         }
         context.res = {
             body: JSON.stringify(r),
