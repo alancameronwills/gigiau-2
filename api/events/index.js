@@ -879,6 +879,11 @@ let gigio = async (source, defaultVenue = "") => {
     return await gigio("https://newportmemorialhall.co.uk/whats-on/?json=1", "Newport Memorial Hall|Neuadd Goffa Trefdraeth");
 }).friendly = "Newport MH";
 
+
+(handlers["peppers"] = async () => {
+    return await gigio("https://peppers-hub.co.uk/events/?json=1", "Peppers Fishguard|Peppers Abergwaun");
+}).friendly = "Peppers";
+
 /*
 let ticketsource = async (source) => {
     console.log("1 [" + source + "]");
