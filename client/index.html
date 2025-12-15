@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-gb">
-<!-- 2025-11-18 -->
+<!-- 2025-12-15 -->
 
 <head>
     <meta charset="UTF-8">
@@ -34,14 +34,14 @@
         }
         var data = {
             local: "",
-            azure:"https://pantywylan.blob.core.windows.net/gigsmash/client",
-            aws:"https://gigsmash-events-prod.s3.eu-west-2.amazonaws.com/client"
+            azure: "https://pantywylan.blob.core.windows.net/gigsmash/client",
+            aws: "https://gigsmash-events-prod.s3.eu-west-2.amazonaws.com/client"
         }[platform];
         var api = {
-            local:"",
-            azure:"https://pantywylan-2.azurewebsites.net/api",
+            local: "",
+            azure: "https://pantywylan-2.azurewebsites.net/api",
             aws: "https://0qa9ai0tq5.execute-api.eu-west-2.amazonaws.com"
-        } [platform];
+        }[platform];
 
         var events = [];
 
@@ -113,8 +113,9 @@
         function setUpInstaller() {
             if (screen.height > 450 && screen.width > 450) return;
             const triedInstaller = Number(localStorage.triedInstaller || 0);
-            if (triedInstaller > 2) return;
+            if (triedInstaller > 4) return;
             document.querySelector("#installButton").classList.remove("hide");
+            document.querySelector("#upfrontInstallButton").classList.remove("hide");
         }
 
         function setUpDisclaimer() {
@@ -500,6 +501,7 @@
             let sideButtonHtml = [];
             sideButtonHtml.push("<div id='favoriteButton' onclick='Favorites.scrollToNext()'>&nbsp;</div>");
             sideButtonHtml.push("<div id='searchButton' onclick='TextFilter.toggle()'>&nbsp;</div>");
+            sideButtonHtml.push("<div id='upfrontInstallButton' onclick='installer()' class='installButton hide')>&nbsp;</div>");
             document.querySelector("#sideButtons").innerHTML = sideButtonHtml.join("\n");
         }
 
@@ -679,12 +681,12 @@
                     }
                 }
 
-                #installButton.hide {
+                .installButton.hide {
                     display: none;
                 }
             </style>
-            <button id="installButton" class="hide" onclick="installer()"><span class="en">Install</span><span
-                    class="cy">Gosod</span></button>
+            <button id="installButton" class="installButton hide" onclick="installer()"><span
+                    class="en">Install</span><span class="cy">Gosod</span></button>
             <button onclick="share()"><span class="en">Share</span><span class="cy">Rhannu</span></button>
             <button onclick="about()"><span class="en">About</span><span class="cy">Am hyn</span></button>
             <button onclick="toggleIaith()"><span class="en">Cymraeg</span><span class="cy">English</span></button>
@@ -731,20 +733,19 @@
                 color: black;
                 transition: all 0.5s;
                 position: fixed;
-                top: 0;
                 left: 0;
-                width: 100%;
-                height: 100%;
+                right: 0;
+                width: 100vw;
+                height: 100vh;
                 z-index: 400;
                 overflow: auto;
                 box-sizing: border-box;
                 padding: 20px;
+                bottom: -200vh;
             }
 
-            .page:not(.visible) {
-                max-width: 0;
-                max-height: 0;
-                margin-left: -150vw;
+            .page.visible {
+                bottom: 0;
             }
 
             .page>div {
@@ -770,16 +771,33 @@
 
             #install-android-page {
                 padding: 6px;
-                bottom: 0;
-                right: 0;
-                width: unset;
-                height: unset;
+                display: flex;
+                background-color: black;
+
+                h2 {
+                    background: darkblue;
+                    color: white;
+                    padding: 20px;
+                }
+
+                ul {
+                    margin: 30px 10px;
+                    background: lightgrey;
+                    padding: 30px 40px;
+                }
+
+                li {
+                    margin: 30px 10px;
+                }
+            }
+
+            #share-page {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
             }
 
             #disclaimer {
-                top: auto;
-                height: auto;
-                bottom: 0;
                 padding-bottom: 10vh;
             }
 
@@ -792,7 +810,7 @@
         <div id="big-pic-page" class="page" onclick="hidePageOver()"></div>
         <div id="install-android-page" class="page" onclick="hidePageOver()">
             <div>
-                Save Gigiau as an app on your phone:
+                <h2>Save Gigiau as an app on your phone:</h2>
                 <ul>
                     <li>
 
@@ -803,6 +821,7 @@
                     <li>
                         If it's an <b>iPhone</b>, look at the the bottom of the screen and tap the box with the arrow.
                         <img src="iphone-export.png" />
+                        <br />
                         Then scroll the options that appear.
                         <br />
                     </li>

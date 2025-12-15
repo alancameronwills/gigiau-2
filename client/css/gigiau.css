@@ -132,11 +132,16 @@ a:link {
     content: "🔍";
 }
 
+#upfrontInstallButton::after {
+    content: "⏬";
+}
+
 #favoriteButton:hover::after {
     background-color: yellow;
     border-radius: 50%;
 }
 
+#upfrontInstallButton:hover::after,
 #searchButton:hover::after {
     transform: scale(1.2);
     border-radius: 50%;
