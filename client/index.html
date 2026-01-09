@@ -236,7 +236,7 @@
             const link = show.url ? `href='${show.url}' target='_top'` : show.imagesource ? `onclick='showBigPic("${show.imagesource}")'` : "";
 
             return dateHead
-                + `<div class='show ${ifHidden} ${show.category || ""} ${show.promoter}' id='show-${ix}'>
+                + `<div class='show ${ifHidden} ${show.category || ""} ${show.promoter}' id='show-${ix}' dt='${show.dt}'>
                     <div class='venue' onclick='venueFilter("${show.promoter}")'>${show.venue}</div>
                     <div class='image'><a ${link}><img src='${cacheImage}'/></a></div>
                     <div class='title'><a ${link}>${show.title}</a></div>
