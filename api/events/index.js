@@ -33,7 +33,7 @@ class DateExtractor {
     constructor() {
         this.months = ["january", "february", "march", "april", "may", "june", "july",
             "august", "september", "october", "november", "december"];
-        this.year = "2025";
+        this.year = "2026";
     }
     extract(s) {
         const nodots = s.replaceAll('.', "").toLocaleLowerCase();
@@ -85,20 +85,20 @@ async function ftext(url, sendHeaders = false) {
 
 let handlers = [];
 
-/*
 (handlers["folkfest"] = async () => {
-    let events = ["23 May 2025", "24 May 2025", "25 May 2025", "26 May 2025"].map(date => {
+    let events = ["22 May 2026", "23 May 2026", "24 May 2026", "25 May 2026"].map(date => {
         return {
-            title: "Fishguard Folk Festival",
+            title: sl("Fishguard Folk Festival", "Gŵyl Werin Abergwaun"),
             text: "Mainly free acts, walks, workshops, sessions",
-            image: "https://static.wixstatic.com/media/94faf9_c433f6cd36dc41c0970e2ef0a3be1b0f~mv2.png",
+            image: "https://static.wixstatic.com/media/2943ab_aed9e87fe2684f4cb7831a31f0bfac95~mv2.png",
             url: "https://www.fishfolkfest.co.uk/",
-            venue: "Fishguard",
+            venue: sl("Fishguard", "Abergwaun"),
             date: date,
             category: "live",
             dt: new Date(date).valueOf()
         };
     });
+    /*
     events.push({
         title: "Ríoghnach Connolly with/gydaf John Ellis",
         text: "Fishguard Folk Festival presents Ríoghnach Connolly RTE 1 folk Singer of the Year 2025 (Ireland). BBC Radio 2 Folk Singer of the Year 2017.",
@@ -109,17 +109,18 @@ let handlers = [];
         date: "Friday 23 May 2025 7:30pm",
         dt: new Date("2025-05-23 19:30").valueOf()
     });
+    */
     return events;
 }).friendly = "Fishguard Folk";
-*/
+
 
 (handlers["othervoices"] = async () => {
-    let events = ["30 October 2025", "31 October 2025", "1 November 2025"].map(date => {
+    let events = ["29 October 2026", "30 October 2026", "31 October 2026"].map(date => {
         return {
             title: sl("Other Voices", "Lleisiau Eraill"),
             text: "Fills the town with incredible music and inspiring conversations. Buy tickets now for the Music Trail.",
             image: "https://cdn.prod.website-files.com/6086b948a54f081798acf981/6086bcfc0897470cb2ea3bfb_OV-logo.png",
-            url: "https://www.othervoices.ie/events/other-voices-cardigan-2025",
+            url: "https://www.othervoices.ie/",
             venue: sl("Cardigan", "Aberteifi"),
             date: date,
             category: "live",
@@ -138,7 +139,7 @@ let handlers = [];
         try {
             let date = m(ev, /<p>(.*?)<\/p>/s).
                 replace(/([0-9])st|nd|rd|th/, "$1").
-                replace(/\sat\s/, " 2025 ").
+                replace(/\sat\s/, " 2026 ").
                 replace(/-.*/, "");
             let dt = new Date(date).valueOf();
             let ri = {
@@ -187,16 +188,16 @@ let handlers = [];
 (handlers["ffm"] = async () => {
     let r = [];
     try {
-        let source = await ftext("https://www.fishguardmusicfestival.com/programme2025");
+        let source = await ftext("https://www.fishguardmusicfestival.com/programme2026");
         let divs = source.match(/<div[^>]*>([^<]|<(?!div))*?<\/div>/sg);
         let columnStrings = divs.filter(d => (d.match(/<\/p>/g)?.length || 0) > 10);
         let columns = columnStrings.map(cs => cs.match(/.*?(<br[^>]*>|<\/p>)/gs));
         let dates = columns[0].map(c0 => c0.replace(/<.*?>/gs, "").trim());
         let shows = columns[1].map(c1 => c1.replace(/<.*?>/gs, "").trim());
-        let urls = columns[2].map(c2 => m(c2, /href="(.*?)"/).trim());
-        let venues = columns[3].map(c3 => c3.replace(/<.*?>/gs, "").trim());
+        let urls = columns[1].map(c2 => m(c2, /href="(.*?)"/).trim());
+        let venues = columns[2].map(c3 => c3.replace(/<.*?>/gs, "").trim());
         for (let i = 0; i < dates.length; i++) {
-            let d = dates[i] + " 2025";  // <<<<<<< YEAR
+            let d = dates[i] + " 2026";  // <<<<<<< YEAR
             let ri = {
                 title: shows[i],
                 venue: venues[i],

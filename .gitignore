@@ -20,6 +20,8 @@ local.settings.json
 
 # Local data
 client/.*
+client/status.txt
+client/collectLock
 client/json
 client/pix
 data/
