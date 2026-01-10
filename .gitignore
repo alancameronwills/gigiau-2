@@ -19,6 +19,7 @@ local.settings.json
 .azure/
 
 # Local data
+client/.*
 client/json
 client/pix
 data/
