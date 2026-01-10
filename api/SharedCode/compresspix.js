@@ -1,4 +1,5 @@
 const sharp = require("sharp");
+const { validateImageUrl } = require('./security.js');
 const containerName = "gigsmash";
 
 let as;
@@ -42,9 +43,29 @@ storeThumbnail : async function (url, name, size=300) {
     let errorResult = "";
     let result = {};
     try {
+        // Security: Validate URL to prevent SSRF attacks
+        url = validateImageUrl(url);
+
+        // Security: Limits to prevent DoS attacks
+        const MAX_FILE_SIZE = 10 * 1024 * 1024;  // 10MB
+        const MAX_DIMENSION = 10000;  // 10000px
+
         const blob = await fetchfile(url, true).then(r => r.blob());
+
+        // Check file size
+        if (blob.size > MAX_FILE_SIZE) {
+            throw new Error('Image file too large (max 10MB)');
+        }
+
         const fileType = blob.type;
         const arrayBuffer = await blob.arrayBuffer();
+
+        // Check image dimensions before processing
+        const metadata = await sharp(arrayBuffer).metadata();
+        if (metadata.width > MAX_DIMENSION || metadata.height > MAX_DIMENSION) {
+            throw new Error(`Image dimensions too large (max ${MAX_DIMENSION}px)`);
+        }
+
         const resized = await sharp(arrayBuffer).resize({width:size}).toBuffer();
         const blobName = name || hashUrl(url);
 

@@ -1,5 +1,6 @@
 const { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
 const fsp = require('fs/promises');
+const { sanitizeFilename } = require('./security.js');
 
 class S3Storer {
     #folder;
@@ -14,9 +15,10 @@ class S3Storer {
 
     async get(name) {
         try {
+            const safeName = sanitizeFilename(name);
             const command = new GetObjectCommand({
                 Bucket: this.#bucketName,
-                Key: this.#folder + name
+                Key: this.#folder + safeName
             });
             const response = await this.#s3Client.send(command);
             return await response.Body.transformToString();
@@ -26,13 +28,14 @@ class S3Storer {
     }
 
     async put(name, type, buffer) {
+        const safeName = sanitizeFilename(name);
         let upBuffer = buffer;
         if (typeof buffer === 'string') {
             upBuffer = Buffer.from(buffer, 'utf8');
         }
         const command = new PutObjectCommand({
             Bucket: this.#bucketName,
-            Key: this.#folder + name,
+            Key: this.#folder + safeName,
             Body: upBuffer,
             ContentType: type || 'application/octet-stream'
         });
@@ -45,17 +48,18 @@ class S3Storer {
      * @returns name of the file that was found (including a missing suffix) or false
      */
     async has(name, getstat = false) {
+        const safeName = sanitizeFilename(name);
         // First try exact match
-        if (name.indexOf('.') > 0) {
+        if (safeName.indexOf('.') > 0) {
             try {
                 const command = new HeadObjectCommand({
                     Bucket: this.#bucketName,
-                    Key: this.#folder + name
+                    Key: this.#folder + safeName
                 });
                 const response = await this.#s3Client.send(command);
-                if (!getstat) return { name };
+                if (!getstat) return { name: safeName };
                 return {
-                    name,
+                    name: safeName,
                     length: response.ContentLength,
                     date: response.LastModified
                 };
@@ -71,7 +75,7 @@ class S3Storer {
         try {
             const listCommand = new ListObjectsV2Command({
                 Bucket: this.#bucketName,
-                Prefix: this.#folder + name
+                Prefix: this.#folder + safeName
             });
             const response = await this.#s3Client.send(listCommand);
 
@@ -92,10 +96,11 @@ class S3Storer {
     }
 
     async delete(name) {
-        if (!await this.has(name)) return;
+        const safeName = sanitizeFilename(name);
+        if (!await this.has(safeName)) return;
         const command = new DeleteObjectCommand({
             Bucket: this.#bucketName,
-            Key: this.#folder + name
+            Key: this.#folder + safeName
         });
         await this.#s3Client.send(command);
     }

@@ -1,4 +1,5 @@
 const sharp = require("sharp");
+const { validateImageUrl } = require('./security.js');
 
 class Cache {
 
@@ -70,7 +71,9 @@ class Cache {
      * @returns {pic ArrayBuffer, name}
   */
     async getCache(url, get = true, name, size = 300) {
-        if (url.indexOf("//") == 0) url = "https:" + url; // fix bluestone
+        // Security: Validate URL to prevent SSRF attacks
+        url = validateImageUrl(url);
+
         let hashName = name || this.#hashUrl(url);
         //this.#context.log(hashName);
         let storeName = (await this.#storer.has(hashName))?.name || ""; // may have suffix appended
@@ -79,9 +82,26 @@ class Cache {
             //this.#context.log("not got " + hashName);
             storeName = hashName;
             try {
+                // Security: Limits to prevent DoS attacks
+                const MAX_FILE_SIZE = 10 * 1024 * 1024;  // 10MB
+                const MAX_DIMENSION = 10000;  // 10000px
+
                 const blob = await this.#fetchfile(url, true).then(r => r.blob());
+
+                // Check file size
+                if (blob.size > MAX_FILE_SIZE) {
+                    throw new Error('Image file too large (max 10MB)');
+                }
+
                 const fileType = blob.type;
                 const arrayBuffer = await blob.arrayBuffer();
+
+                // Check image dimensions before processing
+                const metadata = await sharp(arrayBuffer).metadata();
+                if (metadata.width > MAX_DIMENSION || metadata.height > MAX_DIMENSION) {
+                    throw new Error(`Image dimensions too large (max ${MAX_DIMENSION}px)`);
+                }
+
                 const resized = await sharp(arrayBuffer).resize({ width: size || this.#picSize }).toBuffer();
                 if (storeName.indexOf('.') < 0) {
                     if (fileType.indexOf("jp") > 0) storeName += ".jpg";
@@ -93,7 +113,7 @@ class Cache {
             } catch (e) {
                 this.#context.log(`Couldn't convert ${url} ${e.stack}`);
                 if (get)
-                    return { pic: new Uint8Array(arrayBuffer), name: url, error: e }
+                    return { pic: new Uint8Array(), name: url, error: e }
                 else return { name: url, error: e }
             }
         } else {

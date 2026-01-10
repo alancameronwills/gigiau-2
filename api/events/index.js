@@ -1,8 +1,12 @@
+const { escapeHtml, escapeRegex } = require('../SharedCode/security.js');
+
 const DMhmformat = { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" };
 const DMYformat = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
 
 function attr(s, cls) {
-    return s.match(new RegExp(`<div[^>]+class=['"]${cls}['"].*?>(.*?)</div>`, "s"))?.[1]?.replace(/<div.*?>/, "") || "";
+    // Security: Escape regex special characters to prevent regex injection
+    const safeCls = escapeRegex(cls);
+    return s.match(new RegExp(`<div[^>]+class=['"]${safeCls}['"].*?>(.*?)</div>`, "s"))?.[1]?.replace(/<div.*?>/, "") || "";
 }
 
 function m(source, reg, ix = 1) {
@@ -14,7 +18,8 @@ function datex(dateString) {
 }
 
 function sl(en, cy) {
-    return `<span class='en'>${en}</span><span class='cy'>${cy}</span>`;
+    // Security: Escape HTML to prevent XSS attacks
+    return `<span class='en'>${escapeHtml(en)}</span><span class='cy'>${escapeHtml(cy)}</span>`;
 }
 
 function langSplit(s) {

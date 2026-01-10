@@ -3,6 +3,7 @@ const events = require("../events/index.js");
 const { FileStorer } = require("../SharedCode/filestorer.js"); // await cache.getCache(req.query.src);
 const { Cache } = require("../SharedCode/cachepic.js"); // await cache.getCache(req.query.src);
 const { EventCache } = require("../SharedCode/eventCache.js");
+const { validateVenueName } = require("../SharedCode/security.js");
 //const fs = require('fs'); // synchronous
 const { pid } = require('node:process');
 
@@ -81,7 +82,7 @@ async function collect(context) {
     shows.forEach(show => {
         if (!previous
             || previous.title != show.title
-            || previous.venue.substring(0, 6) != show.venue.substring(0, 6)
+            || (previous.venue || '').substring(0, 6) != (show.venue || '').substring(0, 6)
             || previous.image != show.image
         ) {
             showsUnduplicated.push(show);
@@ -304,11 +305,19 @@ const azureHandler = async function (context, req) {
         } else if (req.query.invalidate) {
             // Invalidate event cache for specific venue(s)
             const venues = req.query.invalidate.split(',');
+            const validVenues = [];
             for (const venue of venues) {
-                await eventCache.invalidate(venue.trim());
+                try {
+                    // Security: Validate venue name to prevent path traversal
+                    const validVenue = validateVenueName(venue.trim());
+                    await eventCache.invalidate(validVenue);
+                    validVenues.push(validVenue);
+                } catch (e) {
+                    fault(`Invalid venue name: ${venue} - ${e.message}`);
+                }
             }
-            await persistentStatus(`Invalidated cache for: ${venues.join(', ')}`);
-            r.status = `Invalidated cache for: ${venues.join(', ')}`;
+            await persistentStatus(`Invalidated cache for: ${validVenues.join(', ')}`);
+            r.status = `Invalidated cache for: ${validVenues.join(', ')}`;
         } else if (req.query.url) {
             if (await collectLock(true)) {
                 try {

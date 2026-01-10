@@ -218,4 +218,5 @@ package:
     - '!.git/**'
     - '!.claude/**'
     - '!node_modules/@azure/**'
+    - '!node_modules/@img/sharp-win32-x64/**'
     - '!*.md'

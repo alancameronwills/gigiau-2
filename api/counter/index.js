@@ -1,4 +1,5 @@
 const { TableStorer } = require("../SharedCode/tableStorer");
+const { validateCounterName } = require("../SharedCode/security");
 
 function listMethods(obj) {
   let methods = [];
@@ -24,6 +25,18 @@ async function azureFunction(context, req) {
         series = parameters[0];
         counter = req.query[series];
         //  ...?z=pole increments counter 'pole' in series z
+
+        // Security: Validate counter and series names
+        try {
+            if (series) series = validateCounterName(series);
+            if (counter) counter = validateCounterName(counter);
+        } catch (e) {
+            context.res = {
+                status: 400,
+                body: { error: e.message }
+            };
+            return;
+        }
     }
     try {
         if (series == "history") {

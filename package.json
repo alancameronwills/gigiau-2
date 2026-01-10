@@ -9,6 +9,10 @@
     "deploy:function": "serverless deploy function -f",
     "deploy:dev": "serverless deploy --stage dev",
     "deploy:prod": "serverless deploy --stage prod",
+    "deploy:aws": ".\\deploy-aws.bat dev",
+    "deploy:aws:dev": ".\\deploy-aws.bat dev",
+    "deploy:aws:prod": ".\\deploy-aws.bat prod",
+    "install:aws": "npm install && npm install --force --no-save @img/sharp-linux-x64 @img/sharp-libvips-linux-x64",
     "logs": "serverless logs -f",
     "invoke": "serverless invoke -f",
     "invoke:local": "serverless invoke local -f",
@@ -22,7 +26,7 @@
     "cross-fetch": "^4.1.0",
     "html-dom-parser": "^5.0.13",
     "http": "^0.0.1-security",
-    "sharp": "^0.34.4",
+    "sharp": "^0.34.5",
     "util": "^0.12.5"
   },
   "devDependencies": {

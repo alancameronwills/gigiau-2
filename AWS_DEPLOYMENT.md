@@ -37,26 +37,39 @@ Alternatively, use AWS IAM roles if running from EC2/ECS.
 
 ## Deployment
 
-### Deploy to Development
+### Quick Deploy with Automated Sharp Installation (Recommended for Windows)
+
+The easiest way to deploy from Windows, which handles Sharp library installation automatically:
 
 ```bash
-npm run deploy:dev
+# Deploy to development
+npm run deploy:aws:dev
+
+# Deploy to production
+npm run deploy:aws:prod
 ```
 
-This will:
-- Create S3 bucket: `gigsmash-events-dev`
-- Deploy all Lambda functions
-- Set up API Gateway HTTP API
-- Configure EventBridge schedule (5-minute collection)
-- Output API endpoint URLs
+These scripts will:
+1. Install all dependencies with `npm install`
+2. Install Linux Sharp binaries required for AWS Lambda
+3. Deploy to AWS with Serverless Framework
+4. Create S3 bucket: `gigsmash-events-{stage}`
+5. Deploy all Lambda functions
+6. Set up API Gateway HTTP API
+7. Configure EventBridge schedule (5-minute collection)
+8. Output API endpoint URLs
 
-### Deploy to Production
+### Manual Deploy (If Linux Binaries Already Installed)
 
 ```bash
+# Development
+npm run deploy:dev
+
+# Production
 npm run deploy:prod
 ```
 
-Creates production resources with `-prod` suffix.
+**Note:** Manual deploy assumes you've already installed Linux Sharp binaries with `npm run install:aws`.
 
 ### Deploy a Single Function (faster)
 
@@ -205,13 +218,28 @@ Create alarms in AWS Console for error monitoring.
 
 ### Sharp Library Issues
 
-Sharp requires native binaries. If you see errors:
+**Problem:** Sharp uses platform-specific native binaries. Developing on Windows but deploying to AWS Lambda (Linux) requires Linux binaries in the deployment package.
+
+**Solution:** Use the provided deployment scripts that automatically install Linux Sharp binaries:
 
 ```bash
-npm rebuild sharp --platform=linux --arch=x64
+# Windows
+npm run deploy:aws:prod
+
+# Or manually install Linux binaries before deployment
+npm run install:aws
+npm run deploy:prod
 ```
 
-Or use Lambda layers (already configured in deployment).
+**What gets installed:**
+- `@img/sharp-linux-x64` - Sharp binary for Linux
+- `@img/sharp-libvips-linux-x64` - Required libvips shared library
+
+**Common errors:**
+- "Could not load the sharp module using the linux-x64 runtime" - Run `npm run install:aws` before deploying
+- "libvips-cpp.so cannot open shared object file" - Missing libvips library, run `npm run install:aws`
+
+The `serverless.yml` is configured to exclude Windows binaries from deployment (`!node_modules/@img/sharp-win32-x64/**`) to reduce package size.
 
 ### S3 Permission Errors
 
