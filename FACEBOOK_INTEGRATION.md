@@ -101,11 +101,12 @@ func azure functionapp publish <app-name>
 
 ### For Users:
 
+0. Superuser must add you to the Gigiau app as a "Tester"
 1. Visit `/fbadmin.html`
 2. Click "Login & Connect Pages"
 3. Authorize the Facebook app
 4. Your pages will be automatically added
-5. Events will appear in the main feed within 5 minutes
+5. Events will appear in the main feed within one hour
 
 ### For Superusers:
 
