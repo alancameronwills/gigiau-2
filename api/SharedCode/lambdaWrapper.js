@@ -16,7 +16,9 @@ function wrapAzureFunctionForLambda(azureHandler) {
             query: event.queryStringParameters || {},
             body: event.body,
             rawBody: event.body,
-            headers: event.headers || {}
+            headers: event.headers || {},
+            url: event.rawPath || event.path || event.requestContext?.http?.path || '',
+            path: event.rawPath || event.path || event.requestContext?.http?.path || ''
         };
 
         // Parse JSON body if needed
@@ -33,13 +35,23 @@ function wrapAzureFunctionForLambda(azureHandler) {
 
         // Convert Azure response to Lambda response
         if (azureContext.res) {
-            return {
+            const response = {
                 statusCode: azureContext.res.status || 200,
                 headers: azureContext.res.headers || {},
                 body: typeof azureContext.res.body === 'string'
                     ? azureContext.res.body
                     : JSON.stringify(azureContext.res.body)
             };
+
+            // AWS API Gateway HTTP API requires cookies in a separate array
+            if (response.headers['Set-Cookie']) {
+                response.cookies = Array.isArray(response.headers['Set-Cookie'])
+                    ? response.headers['Set-Cookie']
+                    : [response.headers['Set-Cookie']];
+                delete response.headers['Set-Cookie'];
+            }
+
+            return response;
         }
 
         // If no context.res was set, return the direct result

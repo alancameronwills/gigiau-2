@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facebook Pages Admin - Gigiau</title>
+    <link rel="icon" type="image/x-icon" href="gigiau.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .auth-section {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .user-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .superuser-badge {
+            background: #ffc107;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .pages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .page-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .page-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .page-name {
+            font-weight: 600;
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .page-meta {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .page-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .action-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state h2 {
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Events</a>
+
+        <h1>Facebook Pages Manager</h1>
+        <p class="subtitle">Connect your Facebook pages to add events to Gigiau</p>
+
+        <div id="status" class="status"></div>
+
+        <div id="notAuthenticated" class="auth-section" style="display:none;">
+            <p style="margin-bottom: 20px; color: #666;">Connect your Facebook Pages to get started</p>
+            <button class="btn btn-primary" onclick="login()">
+                Login & Connect Pages
+            </button>
+        </div>
+
+        <div id="authenticated" style="display:none;">
+            <div class="user-info">
+                <div>
+                    <span class="user-name" id="userName"></span>
+                    <span id="superuserBadge" class="superuser-badge" style="display:none;">Superuser</span>
+                </div>
+                <button class="btn btn-secondary" onclick="logout()">Logout</button>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="login()">Add More Pages</button>
+                <button class="btn btn-secondary" onclick="refreshEvents()">Refresh Events</button>
+            </div>
+
+            <div id="loading" class="loading" style="display:none;">
+                <div class="spinner"></div>
+                <p>Loading pages...</p>
+            </div>
+
+            <div id="pagesContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // Platform detection (same as main site)
+        var platform = "aws";
+        if (location.host == "localhost" && !location.search.match(/server/)) {
+            platform = "local";
+        } else if (location.search.match(/azure/)) {
+            platform = "azure";
+        } else if (location.search.match(/aws/)) {
+            platform = "aws";
+        }
+
+        var api = {
+            local: "http://localhost/api",
+            azure: "https://pantywylan-2.azurewebsites.net/api",
+            aws: "https://0qa9ai0tq5.execute-api.eu-west-2.amazonaws.com"
+        }[platform];
+
+        let currentUser = null;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', init);
+
+        async function init() {
+            // Check for token in URL (from OAuth callback)
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+
+            if (token) {
+                // Store token and clean up URL
+                localStorage.setItem('fb_session', token);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
+            await checkAuth();
+        }
+
+        async function checkAuth() {
+            try {
+                const token = localStorage.getItem('fb_session');
+                const headers = {};
+
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(`${api}/fbauth-me`, {
+                    headers: headers
+                });
+
+                if (response.ok) {
+                    currentUser = await response.json();
+                    showAuthenticated();
+                    await loadPages();
+                } else {
+                    localStorage.removeItem('fb_session');
+                    showNotAuthenticated();
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+                localStorage.removeItem('fb_session');
+                showNotAuthenticated();
+            }
+        }
+
+        function showNotAuthenticated() {
+            document.getElementById('notAuthenticated').style.display = 'block';
+            document.getElementById('authenticated').style.display = 'none';
+        }
+
+        function showAuthenticated() {
+            document.getElementById('notAuthenticated').style.display = 'none';
+            document.getElementById('authenticated').style.display = 'block';
+            document.getElementById('userName').textContent = currentUser.name;
+
+            if (currentUser.isSuperuser) {
+                document.getElementById('superuserBadge').style.display = 'inline';
+            }
+        }
+
+        function login() {
+            window.location.href = `${api}/fbauth-login`;
+        }
+
+        async function logout() {
+            try {
+                const token = localStorage.getItem('fb_session');
+                const headers = {};
+
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                await fetch(`${api}/fbauth-logout`, {
+                    headers: headers
+                });
+
+                localStorage.removeItem('fb_session');
+                window.location.reload();
+            } catch (error) {
+                showStatus('Error logging out', 'error');
+            }
+        }
+
+        async function loadPages() {
+            const container = document.getElementById('pagesContainer');
+            const loading = document.getElementById('loading');
+
+            loading.style.display = 'block';
+            container.innerHTML = '';
+
+            try {
+                const token = localStorage.getItem('fb_session');
+                const headers = {};
+
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(`${api}/fbpages`, {
+                    headers: headers
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load pages');
+                }
+
+                const pages = await response.json();
+                loading.style.display = 'none';
+
+                if (pages.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <h2>No pages connected</h2>
+                            <p>Click "Add More Pages" to connect your Facebook pages</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const grid = document.createElement('div');
+                grid.className = 'pages-grid';
+
+                pages.forEach(page => {
+                    const card = createPageCard(page);
+                    grid.appendChild(card);
+                });
+
+                container.appendChild(grid);
+            } catch (error) {
+                loading.style.display = 'none';
+                showStatus('Error loading pages: ' + error.message, 'error');
+            }
+        }
+
+        function createPageCard(page) {
+            const card = document.createElement('div');
+            card.className = 'page-card';
+
+            let metaHtml = '';
+            if (currentUser.isSuperuser && page.owner_name) {
+                metaHtml = `<div class="page-meta">Connected by: ${escapeHtml(page.owner_name)}</div>`;
+            }
+
+            const addedDate = page.created_at ? new Date(page.created_at).toLocaleDateString() : '';
+            if (addedDate) {
+                metaHtml += `<div class="page-meta">Added: ${addedDate}</div>`;
+            }
+
+            card.innerHTML = `
+                <div class="page-name">${escapeHtml(page.page_name)}</div>
+                ${metaHtml}
+                <div class="page-actions">
+                    <button class="btn btn-danger" onclick="removePage('${page.page_id}', '${escapeHtml(page.page_name)}')">
+                        Remove
+                    </button>
+                </div>
+            `;
+
+            return card;
+        }
+
+        async function removePage(pageId, pageName) {
+            if (!confirm(`Remove "${pageName}" from Gigiau?\n\nThis will stop showing events from this page.`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('fb_session');
+                const headers = {};
+
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(`${api}/fbpages?id=${pageId}`, {
+                    method: 'DELETE',
+                    headers: headers
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to remove page');
+                }
+
+                showStatus(`Removed ${pageName}`, 'success');
+                await loadPages();
+            } catch (error) {
+                showStatus('Error removing page: ' + error.message, 'error');
+            }
+        }
+
+        async function refreshEvents() {
+            showStatus('Triggering event refresh... This may take a few minutes.', 'info');
+
+            try {
+                const token = localStorage.getItem('fb_session');
+                const headers = {};
+
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(`${api}/fbpages?refresh=1`, {
+                    method: 'POST',
+                    headers: headers
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to trigger refresh');
+                }
+
+                showStatus('Event refresh started! Events will update shortly.', 'success');
+            } catch (error) {
+                showStatus('Error refreshing events: ' + error.message, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+            statusEl.style.display = 'block';
+
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

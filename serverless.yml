@@ -8,9 +8,33 @@ provider:
   timeout: 30  # Default timeout (seconds)
   memorySize: 512  # Default memory (MB)
 
+  httpApi:
+    cors:
+      allowedOrigins:
+        - https://gigiau.uk
+        - http://localhost
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+        - Cookie
+      allowedMethods:
+        - GET
+        - POST
+        - DELETE
+        - OPTIONS
+      allowCredentials: true
+
   environment:
+    NODE_ENV: production
     S3_BUCKET_NAME: ${self:custom.bucketName}
     STAGE: ${self:provider.stage}
+    # Facebook OAuth configuration
+    FB_APP_ID: ${env:FB_APP_ID}
+    FB_APP_SECRET: ${env:FB_APP_SECRET}
+    FB_REDIRECT_URI: ${env:FB_REDIRECT_URI}
+    FB_CLIENT_URL: ${env:FB_CLIENT_URL}
+    SUPERUSER_IDS: ${env:SUPERUSER_IDS, ''}
+    JWT_SECRET: ${env:JWT_SECRET}
 
   iam:
     role:
@@ -47,6 +71,20 @@ provider:
             - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaucounters
             - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaucounterdays
 
+        # DynamoDB permissions for Facebook integration
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+            - dynamodb:Query
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaufbusers
+            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaufbpages
+            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaufbsessions
+
 custom:
   bucketName: gigsmash-events-${self:provider.stage}
 
@@ -70,7 +108,7 @@ functions:
           path: /collect
           method: get
 
-  # Scheduled collection (every 5 minutes)
+  # Scheduled collection (hourly at 5 minutes past)
   collectTimer:
     handler: api/CollectOnTimer/index.handler
     timeout: 300
@@ -139,6 +177,51 @@ functions:
           rate: cron(9 2 * * ? *)
           enabled: true
 
+  # Facebook OAuth - Login
+  fbauthLogin:
+    handler: api/fbauth/index.handler
+    timeout: 30
+    events:
+      - httpApi:
+          path: /fbauth-login
+          method: get
+
+  # Facebook OAuth - Callback
+  fbauthCallback:
+    handler: api/fbauth/index.handler
+    timeout: 30
+    events:
+      - httpApi:
+          path: /fbauth-callback
+          method: get
+
+  # Facebook OAuth - Logout
+  fbauthLogout:
+    handler: api/fbauth/index.handler
+    timeout: 30
+    events:
+      - httpApi:
+          path: /fbauth-logout
+          method: get
+
+  # Facebook OAuth - Get current user
+  fbauthMe:
+    handler: api/fbauth/index.handler
+    timeout: 30
+    events:
+      - httpApi:
+          path: /fbauth-me
+          method: get
+
+  # Facebook page management
+  fbpages:
+    handler: api/fbpages/index.handler
+    timeout: 30
+    events:
+      - httpApi:
+          path: /fbpages
+          method: any
+
 resources:
   Resources:
     # DynamoDB table for counters
@@ -174,6 +257,60 @@ resources:
             KeyType: HASH
           - AttributeName: rowKey
             KeyType: RANGE
+
+    # DynamoDB table for Facebook users
+    FbUsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: gigiaufbusers
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: partitionKey
+            AttributeType: S
+          - AttributeName: rowKey
+            AttributeType: S
+        KeySchema:
+          - AttributeName: partitionKey
+            KeyType: HASH
+          - AttributeName: rowKey
+            KeyType: RANGE
+
+    # DynamoDB table for Facebook pages
+    FbPagesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: gigiaufbpages
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: partitionKey
+            AttributeType: S
+          - AttributeName: rowKey
+            AttributeType: S
+        KeySchema:
+          - AttributeName: partitionKey
+            KeyType: HASH
+          - AttributeName: rowKey
+            KeyType: RANGE
+
+    # DynamoDB table for Facebook sessions
+    FbSessionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: gigiaufbsessions
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: partitionKey
+            AttributeType: S
+          - AttributeName: rowKey
+            AttributeType: S
+        KeySchema:
+          - AttributeName: partitionKey
+            KeyType: HASH
+          - AttributeName: rowKey
+            KeyType: RANGE
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
 
     # S3 bucket for event images and data
     GigsmashBucket:

@@ -85,6 +85,17 @@ async function ftext(url, sendHeaders = false) {
 
 let handlers = [];
 
+// Facebook Pages handler - aggregates events from all connected Facebook pages
+(handlers["facebook"] = async () => {
+    try {
+        const { fetchFacebookEvents } = require('../SharedCode/facebookEvents.js');
+        return await fetchFacebookEvents();
+    } catch (e) {
+        console.error('[FB] Handler error:', e);
+        return [];
+    }
+}).friendly = "Facebook Pages";
+
 (handlers["folkfest"] = async () => {
     let events = ["22 May 2026", "23 May 2026", "24 May 2026", "25 May 2026"].map(date => {
         return {

@@ -1,3 +1,5 @@
+// Load environment variables from .env file
+require('dotenv').config();
 
 const http = require('http');
 const util = require('util');
@@ -33,43 +35,54 @@ const handlers = {
 };
 
 async function runFile(fPath, req, response) {
-	let context = { res: response, log: console.log };
+	let context = { res: {}, log: console.log };
 	try {
 		let code = (await import(fPath)).default;
-		context.res.body = `Code5 ${util.inspect(code)} ${fPath}`;
 		await code(context, req);
 	} catch (e) {
 		context.res.body = `runFile ${fPath} error ${e.stack}`;
+		context.res.status = 500;
 	}
+	// Copy response from context
 	response.body = context.res.body;
-	response.status = context.res.status;
-	response.headers = context.res.headers;
+	response.status = context.res.status || 200;
+	response.headers = context.res.headers || { 'Content-Type': 'text/plain' };
 	return response;
 }
 
 
 
 function parseReq(request, defaultPage = "/index.html") {
-	let url = request.url.toLowerCase();
+	let url = request.url; // Don't lowercase - breaks OAuth codes!
 	let method = request.method;
 	let headers = {};
 	for (let i = 0; i < request.rawHeaders.length; i += 2) {
 		headers[request.rawHeaders[i]] = request.rawHeaders[i + 1];
 	}
 	let host = headers.Host;
-	let path = url.replace(/[\?#].*/, "").replace(/\/$/, "");
+	let path = url.replace(/[\?#].*/, "").replace(/\/$/, "").toLowerCase(); // Only lowercase the path
 	let path2 = path.replace(/^\/[^\/]*/, "");
 	if (path == "/") path = defaultPage;
 	let extension = path.match(/\.[^.]*$/)?.[0] ?? "";
-	let queryString = url.match(/\?(.*)/)?.[1] ?? "";  // url.replace(/.*\?/,"");
+	let queryString = url.match(/\?(.*)/)?.[1] ?? "";  // Keep original case
 	let paramStrings = queryString.split('&');
 	let query = paramStrings.reduce((m, keqv) => {
 		if (!keqv) return m;
 		let kv = keqv.split('=');
-		m[kv[0]] = kv.length > 1 ? kv[1] : true;
+		m[kv[0]] = kv.length > 1 ? decodeURIComponent(kv[1]) : true;
 		return m;
 	}, {});
-	return { path: path, path2, extension: extension, queryString: queryString, query: query, host: host, url: url, method: method, headers: headers };
+	return {
+		path: path,
+		path2,
+		extension: extension,
+		queryString: queryString,
+		query: query,
+		host: host,
+		url: url, // Original URL with case preserved
+		method: method,
+		headers: headers
+	};
 }
 (async () => {
 	const root = (await fs.realpath('.')).replace("/server", "");
@@ -89,7 +102,15 @@ function parseReq(request, defaultPage = "/index.html") {
 				h(req, response);
 			} else {
 				if (!cmd) cmd="index.html";
+
+				// Route all fbauth-* endpoints to api/fbauth/index.js
 				let fPath = `${root}/${cmd}`;
+				if (cmd.startsWith('api/fbauth-')) {
+					fPath = `${root}/api/fbauth/index.js`;
+					req.url = req.url; // Keep original URL for path detection
+					req.path = req.path; // Keep original path
+				}
+
 				//response.body = `fPath [${fPath}]`;
 				if (fPath.indexOf("..") < 0 && fsSync.existsSync(fPath)) {
 					if (fsSync.lstatSync(fPath).isDirectory()) {
@@ -134,8 +155,13 @@ function parseReq(request, defaultPage = "/index.html") {
 		} catch (e) {
 			response.body = "Error: " + e;
 		}
-		res.writeHead(response.status, response.headers);
-		res.end(response.body);
+		// Handle redirects (don't send body for 3xx status codes)
+		res.writeHead(response.status || 200, response.headers || {});
+		if (response.status >= 300 && response.status < 400) {
+			res.end();
+		} else {
+			res.end(response.body);
+		}
 	});
 	const port = process.argv[2] || 80;
 	server.listen(port);

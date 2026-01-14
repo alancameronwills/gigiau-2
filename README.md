@@ -5,9 +5,10 @@ A multi-cloud serverless application that aggregates cultural events (live music
 ## Features
 
 - **Web Scraping**: Automated collection from venue websites
+- **Facebook Integration**: Connect Facebook Pages to automatically import events
 - **Image Processing**: Downloads and compresses event images with Sharp
 - **Multi-Cloud**: Runs on both Azure Functions and AWS Lambda
-- **Scheduled Collection**: Automatic updates every 5 minutes
+- **Scheduled Collection**: Automatic updates hourly
 - **Bilingual Support**: English and Welsh content
 - **Deduplication**: Removes duplicate events across venues
 
@@ -55,6 +56,7 @@ See [AWS_DEPLOYMENT.md](./AWS_DEPLOYMENT.md) for detailed deployment instruction
 - Bluestone Brewing
 - Cardigan Castle
 - Moylgrove Hall
+- **Facebook Pages** (user-connected via OAuth)
 - _and 10+ more..._
 
 ### Technology Stack
@@ -68,10 +70,14 @@ See [AWS_DEPLOYMENT.md](./AWS_DEPLOYMENT.md) for detailed deployment instruction
 
 ### Storage Abstraction
 
-The application automatically selects storage backend:
+**File Storage**: The application automatically selects storage backend:
 - **AWS Lambda**: S3 bucket
 - **Azure Functions**: Blob Storage
 - **Local**: Filesystem (`client/pix/`)
+
+**Table Storage**: For structured data (counters, Facebook users/pages/sessions):
+- **AWS Lambda**: DynamoDB
+- **Azure Functions**: Azure Table Storage
 
 ## API Endpoints
 
@@ -86,6 +92,14 @@ The application automatically selects storage backend:
 | `/gigpic?src={url}` | GET | Get cached/compressed image |
 | `/compress?url={url}` | GET | Compress image on-demand |
 | `/miscevents` | GET/POST | Manually-added events |
+| `/counter` | GET | View/increment counters |
+| `/fbauth-login` | GET | Facebook OAuth login |
+| `/fbauth-callback` | GET | Facebook OAuth callback |
+| `/fbauth-logout` | GET | Logout (destroy session) |
+| `/fbauth-me` | GET | Get current user info |
+| `/fbpages` | GET | List connected Facebook pages |
+| `/fbpages?id={page_id}` | DELETE | Remove a Facebook page |
+| `/fbpages?refresh=1` | POST | Trigger manual event refresh |
 
 ## Configuration
 
@@ -93,10 +107,18 @@ The application automatically selects storage backend:
 
 - `S3_BUCKET_NAME`: S3 bucket name (default: `gigsmash-events-{stage}`)
 - `AWS_REGION`: AWS region (default: `eu-west-2`)
+- `NODE_ENV`: Set to `production` for secure cookies
+- `FB_APP_ID`: Facebook App ID
+- `FB_APP_SECRET`: Facebook App Secret
+- `FB_REDIRECT_URI`: OAuth callback URL
+- `FB_CLIENT_URL`: Frontend URL (where fbadmin.html is hosted)
+- `SUPERUSER_IDS`: Comma-separated Facebook user IDs with admin privileges
+- `JWT_SECRET`: Random secret for JWT session tokens (32+ characters)
 
 ### Environment Variables (Azure)
 
 - `PicStorage`: Azure Blob Storage connection string
+- Facebook environment variables (same as AWS)
 
 ## Project Structure
 
@@ -109,13 +131,24 @@ gigback/
 │   ├── gigpic/              # Image serving
 │   ├── compress/            # Image compression
 │   ├── miscevents/          # Manual events storage
+│   ├── counter/             # Counter API
+│   ├── counterlog/          # Counter logging (daily)
+│   ├── fbauth/              # Facebook OAuth (login/callback/logout/me)
+│   ├── fbpages/             # Facebook page management
 │   ├── TestFileStore/       # Storage tests
 │   └── SharedCode/
-│       ├── filestorer.js    # Storage abstraction
+│       ├── filestorer.js    # File storage abstraction
+│       ├── tableStorer.js   # Table storage abstraction
 │       ├── s3storer.js      # AWS S3 implementation
 │       ├── cachepic.js      # Image caching/compression
-│       ├── compresspix.js   # Legacy compression
+│       ├── facebookEvents.js # Facebook events fetcher
+│       ├── jwtSession.js    # JWT session management
 │       └── lambdaWrapper.js # Azure→Lambda compatibility
+├── client/
+│   ├── index.html           # Main events page
+│   ├── fbadmin.html         # Facebook page management UI
+│   ├── json/                # Generated events JSON
+│   └── pix/                 # Cached images (local only)
 ├── serverless.yml           # AWS deployment config
 ├── package.json
 ├── CLAUDE.md               # Developer guide
@@ -123,6 +156,32 @@ gigback/
 ```
 
 ## Development
+
+### Facebook Integration
+
+The application supports connecting Facebook Pages to automatically import their events.
+
+**Setup:**
+1. Create a Facebook App at https://developers.facebook.com
+2. Configure OAuth redirect URI: `https://yourdomain.com/fbauth-callback`
+3. Set required environment variables (see Configuration above)
+4. Request permissions: `pages_manage_metadata`, `pages_read_engagement`, `pages_show_list`
+
+**Usage:**
+1. Visit `/fbadmin.html`
+2. Click "Login & Connect Pages"
+3. Authorize the app and select pages
+4. Events from connected pages automatically appear in the main feed
+
+**Data Storage:**
+- `gigiaufbusers`: User accounts (Facebook ID, name, access token, superuser flag)
+- `gigiaufbpages`: Connected pages (page ID, name, permanent page token, owner)
+- `gigiaufbsessions`: JWT session tokens (7-day expiration, TTL enabled)
+
+**Authentication:**
+- Session tokens stored in localStorage (client-side)
+- API requests use `Authorization: Bearer <token>` header
+- Cross-domain authentication without cookie issues
 
 ### Adding a New Venue
 

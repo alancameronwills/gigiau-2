@@ -62,7 +62,7 @@ if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
 #### New Files
 - **`serverless.yml`** - AWS deployment configuration
   - 7 Lambda functions with HTTP API triggers
-  - EventBridge schedule (5-minute collection)
+  - EventBridge schedule (hourly collection at 5 minutes past)
   - S3 bucket with public read policy for images
   - IAM roles and permissions
   - Environment variables
@@ -268,7 +268,7 @@ curl https://{api-id}.execute-api.eu-west-2.amazonaws.com/events
 ## 📝 Notes
 
 - Sharp library works automatically in Lambda (runtime-compatible binaries)
-- Timer trigger changed from cron `0 5 * * * *` (Azure) to `rate(5 minutes)` (AWS)
+- Timer trigger changed from cron `0 5 * * * *` (Azure) to `cron(5 * * * ? *)` (AWS) - hourly at 5 minutes past
 - Environment variable: `PicStorage` (Azure) → `S3_BUCKET_NAME` (AWS)
 - Lock files now stored in S3 instead of Blob Storage (when on AWS)
 - All handlers maintain Azure context/req API internally
@@ -301,6 +301,58 @@ For issues or questions:
 
 ---
 
+## 🆕 Post-Migration Enhancements
+
+### Facebook Integration (Added 2026-01-14)
+
+**New Features:**
+- Facebook OAuth authentication with JWT session management
+- User-managed Facebook page connections
+- Automatic event import from connected pages
+- Admin UI at `/fbadmin.html`
+- Superuser management capabilities
+
+**New Files:**
+- `api/fbauth/index.js` - Facebook OAuth handler (login/callback/logout/me)
+- `api/fbpages/index.js` - Page management API
+- `api/SharedCode/jwtSession.js` - JWT session management
+- `api/SharedCode/facebookEvents.js` - Facebook Graph API event fetcher
+- `client/fbadmin.html` - Facebook page management UI
+
+**New DynamoDB Tables:**
+- `gigiaufbusers` - Facebook user accounts
+- `gigiaufbpages` - Connected Facebook pages
+- `gigiaufbsessions` - JWT session tokens (TTL enabled)
+
+**Environment Variables Added:**
+- `NODE_ENV` - Set to `production` for secure cookies
+- `FB_APP_ID` - Facebook App ID
+- `FB_APP_SECRET` - Facebook App Secret
+- `FB_REDIRECT_URI` - OAuth callback URL
+- `FB_CLIENT_URL` - Frontend URL
+- `SUPERUSER_IDS` - Admin user Facebook IDs
+- `JWT_SECRET` - JWT signing secret
+
+**New Dependencies:**
+- `jsonwebtoken` - JWT token generation/validation
+- `cookie` - Cookie serialization
+
+**Authentication Strategy:**
+- Token-based authentication (not cookies) to avoid cross-domain issues
+- Tokens stored in localStorage, sent via `Authorization: Bearer` header
+- 7-day session expiration with auto-cleanup via DynamoDB TTL
+
+**Integration:**
+- Facebook handler added to `api/events/index.js` as `handlers["facebook"]`
+- Events fetched from Graph API v18.0
+- Automatic categorization (live/film/quiz/broadcast)
+- Per-page error handling (one failure doesn't break all)
+
+---
+
 **Migration Date**: 2025-10-05
 **Migrated By**: Claude Code
 **Status**: ✅ Complete and Ready for Deployment
+
+**Facebook Integration Date**: 2026-01-14
+**Status**: ✅ Complete and Operational

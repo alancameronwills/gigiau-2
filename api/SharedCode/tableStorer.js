@@ -5,6 +5,75 @@
  */
 
 const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+const fs = require('fs');
+const path = require('path');
+
+/**
+ * File-based Table Storage implementation (for local development)
+ */
+class FileTableStorer {
+    constructor(tableName) {
+        this.tableName = tableName;
+        this.dataDir = path.join(process.cwd(), 'data', 'tables', tableName);
+
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(this.dataDir)) {
+            fs.mkdirSync(this.dataDir, { recursive: true });
+        }
+    }
+
+    _getFilePath(partitionKey, rowKey) {
+        // Create safe filename from partition and row keys
+        const safePartition = partitionKey.replace(/[^a-zA-Z0-9]/g, '_');
+        const safeRow = rowKey.replace(/[^a-zA-Z0-9]/g, '_');
+        return path.join(this.dataDir, `${safePartition}_${safeRow}.json`);
+    }
+
+    async getEntity(partitionKey, rowKey) {
+        try {
+            const filePath = this._getFilePath(partitionKey, rowKey);
+            if (!fs.existsSync(filePath)) {
+                return null;
+            }
+            const data = fs.readFileSync(filePath, 'utf8');
+            return JSON.parse(data);
+        } catch {
+            return null;
+        }
+    }
+
+    async upsertEntity(entity) {
+        const filePath = this._getFilePath(entity.partitionKey, entity.rowKey);
+        fs.writeFileSync(filePath, JSON.stringify(entity, null, 2), 'utf8');
+        return entity;
+    }
+
+    async createEntity(entity) {
+        return await this.upsertEntity(entity);
+    }
+
+    async *listEntities(options = {}) {
+        const files = fs.readdirSync(this.dataDir);
+        for (const file of files) {
+            if (file.endsWith('.json')) {
+                try {
+                    const data = fs.readFileSync(path.join(this.dataDir, file), 'utf8');
+                    yield JSON.parse(data);
+                } catch (e) {
+                    console.error('[FileTableStorer] Error reading file:', file, e);
+                }
+            }
+        }
+    }
+
+    async deleteEntity(partitionKey, rowKey) {
+        const filePath = this._getFilePath(partitionKey, rowKey);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+        return true;
+    }
+}
 
 /**
  * Azure Table Storage implementation
@@ -124,14 +193,25 @@ class DynamoTableStorer {
 /**
  * Factory function to create appropriate table storer
  * @param {string} tableName - Name of the table
- * @returns {AzureTableStorer|DynamoTableStorer}
+ * @returns {FileTableStorer|AzureTableStorer|DynamoTableStorer}
  */
 function TableStorer(tableName) {
+    // AWS Lambda - use DynamoDB
     if (isLambda) {
         return new DynamoTableStorer(tableName);
-    } else {
-        return new AzureTableStorer(tableName);
     }
+
+    // Azure - use Azure Table Storage (if SDK available)
+    if (process.env.AzureWebJobsStorage) {
+        try {
+            return new AzureTableStorer(tableName);
+        } catch (e) {
+            console.log('[TableStorer] Azure SDK not available, falling back to file storage');
+        }
+    }
+
+    // Local development - use file-based storage
+    return new FileTableStorer(tableName);
 }
 
-module.exports = { TableStorer, AzureTableStorer, DynamoTableStorer };
+module.exports = { TableStorer, FileTableStorer, AzureTableStorer, DynamoTableStorer };

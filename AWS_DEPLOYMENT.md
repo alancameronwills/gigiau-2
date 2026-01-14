@@ -56,7 +56,7 @@ These scripts will:
 4. Create S3 bucket: `gigsmash-events-{stage}`
 5. Deploy all Lambda functions
 6. Set up API Gateway HTTP API
-7. Configure EventBridge schedule (5-minute collection)
+7. Configure EventBridge schedule (hourly at 5 minutes past)
 8. Output API endpoint URLs
 
 ### Manual Deploy (If Linux Binaries Already Installed)
@@ -117,17 +117,39 @@ The application automatically detects AWS Lambda environment via `AWS_LAMBDA_FUN
 **Default values in Lambda:**
 - `S3_BUCKET_NAME`: `gigsmash-events-{stage}`
 - `AWS_REGION`: `eu-west-2`
+- `NODE_ENV`: `production`
+
+**Facebook Integration** (optional, configure in `.env` file):
+- `FB_APP_ID`: Facebook App ID
+- `FB_APP_SECRET`: Facebook App Secret
+- `FB_REDIRECT_URI`: OAuth callback URL (e.g., `https://yourdomain.com/fbauth-callback`)
+- `FB_CLIENT_URL`: Frontend URL (e.g., `https://yourdomain.com`)
+- `SUPERUSER_IDS`: Comma-separated Facebook user IDs with admin privileges
+- `JWT_SECRET`: Random 32+ character string for JWT session signing
 
 Override in `serverless.yml` under `provider.environment` if needed.
 
 ## Architecture
 
 ### Storage
+
+**File Storage:**
 - **Local Development**: Uses `FileStorer` (filesystem)
 - **AWS Lambda**: Uses `S3Storer` (S3 bucket)
 - **Azure Functions**: Uses `BlobStorer` (Azure Blob Storage)
 
+**Table Storage** (for counters, Facebook data):
+- **AWS Lambda**: Uses `DynamoTableStorer` (DynamoDB tables)
+- **Azure Functions**: Uses `AzureTableStorer` (Azure Table Storage)
+
 Detection is automatic based on environment.
+
+**DynamoDB Tables** (created automatically by serverless.yml):
+- `gigiaucounters`: Counter tracking
+- `gigiaucounterdays`: Counter history
+- `gigiaufbusers`: Facebook user accounts
+- `gigiaufbpages`: Connected Facebook pages
+- `gigiaufbsessions`: JWT session tokens (TTL enabled)
 
 ### Event Result Caching
 The system caches successfully scraped events per venue to improve reliability:
@@ -155,11 +177,19 @@ After deployment, you'll get a base URL like:
 - `GET /gigpic?src={url}` - Get cached image
 - `GET /compress?url={url}` - Compress image on demand
 - `ANY /miscevents` - Manually-added events
+- `GET /counter` - View/increment counters
 - `GET /test` - Storage system test
+- `GET /fbauth-login` - Facebook OAuth login
+- `GET /fbauth-callback` - Facebook OAuth callback
+- `GET /fbauth-logout` - Logout (destroy session)
+- `GET /fbauth-me` - Get current user info
+- `GET /fbpages` - List connected Facebook pages
+- `DELETE /fbpages?id={page_id}` - Remove Facebook page
+- `POST /fbpages?refresh=1` - Trigger manual event refresh
 
 ### Scheduled Collection
 
-EventBridge runs `collectTimer` every 5 minutes automatically.
+EventBridge runs `collectTimer` hourly at 5 minutes past the hour (00:05, 01:05, 02:05, etc.) automatically.
 
 Disable in `serverless.yml`:
 ```yaml

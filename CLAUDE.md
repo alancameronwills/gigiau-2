@@ -38,7 +38,7 @@ The application now supports both **Azure Functions** and **AWS Lambda** from th
 The `api/` directory contains cloud function endpoints:
 - `api/events/` - Returns event listings from venue-specific scrapers
 - `api/collect/` - Orchestrates full collection, deduplication, and caching
-- `api/CollectOnTimer/` - Timer-triggered function (runs every 5 minutes via cron: `0 5 * * * *`)
+- `api/CollectOnTimer/` - Timer-triggered function (runs hourly at 5 minutes past via cron: `5 * * * ? *`)
 - `api/gigpic/` - Serves cached/compressed images
 - `api/compress/` - On-demand image compression endpoint
 - `api/miscevents/` - Stores/retrieves manually-added events
@@ -46,6 +46,8 @@ The `api/` directory contains cloud function endpoints:
 - `api/storageUrl/` - Returns public URLs for data storage (S3/Azure Blob/local)
 - `api/counter/` - Counter API for tracking and incrementing named counters
 - `api/counterlog/` - Timer-triggered function that logs counter deltas (runs daily at 02:09 UTC)
+- `api/fbauth/` - Facebook OAuth authentication (login, callback, logout, me)
+- `api/fbpages/` - Facebook page management (list, delete, refresh)
 
 The `client/` directory contains front end web pages that are served from a separate server.
 
@@ -74,6 +76,83 @@ The `TableStorer()` factory function automatically chooses based on environment:
 2. Default → AzureTableStorer
 
 Both implement the same interface: `getEntity()`, `upsertEntity()`, `createEntity()`, `listEntities()`, `deleteEntity()`.
+
+### Facebook Integration
+
+The application supports connecting Facebook Pages via OAuth to automatically import events.
+
+#### Authentication Flow (`api/fbauth/index.js`)
+Single handler with internal routing for four actions:
+1. **Login** (`/fbauth-login`): Redirects to Facebook OAuth dialog
+2. **Callback** (`/fbauth-callback`): Exchanges code for tokens, stores user/pages, creates session
+3. **Logout** (`/fbauth-logout`): Destroys session
+4. **Me** (`/fbauth-me`): Returns current user info
+
+**Session Management** (`api/SharedCode/jwtSession.js`):
+- JWT tokens signed with `JWT_SECRET`
+- Tokens stored in localStorage (client-side), sent via `Authorization: Bearer` header
+- Session metadata stored in `gigiaufbsessions` table (7-day expiration, TTL enabled)
+- Avoids cross-domain cookie issues by using token-based authentication
+
+**OAuth Flow**:
+1. User clicks "Login & Connect Pages" in `/fbadmin.html`
+2. Redirects to Facebook OAuth with scopes: `pages_manage_metadata`, `pages_read_engagement`, `pages_show_list`
+3. Facebook redirects to `/fbauth-callback?code=...`
+4. Callback exchanges code for short-lived token, then long-lived token (60 days)
+5. Fetches user profile and list of managed pages
+6. Stores user in `gigiaufbusers`, pages in `gigiaufbpages` (with permanent page tokens)
+7. Creates JWT session and redirects to `/fbadmin.html?token=...`
+8. Client stores token in localStorage for subsequent API calls
+
+#### Page Management (`api/fbpages/index.js`)
+- **GET /fbpages**: List pages (filtered by ownership, superusers see all)
+- **DELETE /fbpages?id={page_id}**: Remove page (authorization check)
+- **POST /fbpages?refresh=1**: Trigger manual event refresh
+- All endpoints require authentication via `requireAuth(req)`
+
+#### Event Fetching (`api/SharedCode/facebookEvents.js`)
+- Fetches events from all enabled pages in parallel
+- Uses Facebook Graph API v18.0: `/{page_id}/events?time_filter=upcoming`
+- Transforms to standard event format with automatic category inference
+- Errors on individual pages don't break entire collection
+- Integrated as `handlers["facebook"]` in `api/events/index.js`
+
+**Data Model**:
+```javascript
+// gigiaufbusers
+{
+  partitionKey: "user",
+  rowKey: "{facebook_id}",
+  facebook_id, name, access_token, isSuperuser, created_at, modified
+}
+
+// gigiaufbpages
+{
+  partitionKey: "page",
+  rowKey: "{page_id}",
+  page_id, page_name, access_token,  // Permanent page token
+  user_facebook_id, enabled, created_at, modified
+}
+
+// gigiaufbsessions
+{
+  partitionKey: "session",
+  rowKey: "{session_token_id}",
+  facebook_id, expires, created_at, ttl  // TTL for auto-cleanup
+}
+```
+
+**Environment Variables**:
+- `FB_APP_ID`: Facebook App ID
+- `FB_APP_SECRET`: Facebook App Secret
+- `FB_REDIRECT_URI`: OAuth callback URL (e.g., `https://domain.com/fbauth-callback`)
+- `FB_CLIENT_URL`: Frontend URL where fbadmin.html is hosted
+- `SUPERUSER_IDS`: Comma-separated Facebook user IDs (can manage all pages)
+- `JWT_SECRET`: Random 32+ character string for JWT signing
+- `NODE_ENV`: Set to `production` for secure cookies (HTTPS)
+
+#### CORS Handling
+Both `fbauth` and `fbpages` handlers support OPTIONS preflight requests for cross-domain API calls with custom headers.
 
 ### Event Collection Pipeline
 1. **Scraping** (`api/events/index.js`):
