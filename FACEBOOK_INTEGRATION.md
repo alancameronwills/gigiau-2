@@ -43,15 +43,24 @@ JWT_SECRET=e2bd39b70c8643aad4b78e224a2f0d114eb4df8f2b3d6efa454b1e2ec2cfc272
 
 ### 2. Facebook App Configuration
 
+Facebook App "Gigiau" is set up as a Business app in Developer mode.
+Business Manager account is "Cymdeithas Trewyddel", which is verified.
+
 Update the Facebook App (ID: 904413468941099):
 
 1. Go to https://developers.facebook.com/apps/904413468941099
-2. Navigate to **Settings > Basic**
-3. Under **Valid OAuth Redirect URIs**, add:
-   - Development: `http://localhost/api/fbauth-callback`
-   - Production: `https://yourdomain.com/fbauth-callback`
+2. Navigate to **Settings > Advanced**
+3. Under **Domain manager** add:
+  - Backend: https://0qa9ai0tq5.execute-api.eu-west-2.amazonaws.com
+  - Frontend: https://gigiau.uk
+3. Under **Facebook Login for Business** > **Settings** > **Valid OAuth Redirect URIs**, add:
+   - : `https://0qa9ai0tq5.execute-api.eu-west-2.amazonaws.com/fbauth-callback`
 4. Save changes
-5. Ensure app is in **Live** mode (not Development)
+5. Ensure app is in **Development** mode (not Live)
+
+Under  **App roles** > **Roles** add:
+- Administrators: any FB user who should be a Supersuser
+- Testers (*not Test Users*): any FB user who administers a Page that has Events we want
 
 ### 3. Deploy to AWS
 
@@ -90,9 +99,9 @@ func azure functionapp publish <app-name>
 
 ### 5. Get Your Facebook ID (for Superuser)
 
-1. Visit: https://yourdomain.com/fbadmin.html
+1. Visit: https://gigiau.uk/fbadmin.html
 2. Log in with Facebook
-3. After login, visit: https://yourdomain.com/fbauth?action=me
+3. After login, visit: https://gigiau.uk/fbauth?action=me
 4. Copy your `facebook_id` from the JSON response
 5. Add it to `SUPERUSER_IDS` environment variable
 6. Redeploy
