@@ -96,7 +96,7 @@ Single handler with internal routing for four actions:
 
 **OAuth Flow**:
 1. User clicks "Login & Connect Pages" in `/fbadmin.html`
-2. Redirects to Facebook OAuth with scopes: `pages_manage_metadata`, `pages_read_engagement`, `pages_show_list`
+2. Redirects to Facebook OAuth with scopes: `pages_read_engagement`, `pages_show_list`
 3. Facebook redirects to `/fbauth-callback?code=...`
 4. Callback exchanges code for short-lived token, then long-lived token (60 days)
 5. Fetches user profile and list of managed pages
@@ -106,7 +106,8 @@ Single handler with internal routing for four actions:
 
 #### Page Management (`api/fbpages/index.js`)
 - **GET /fbpages**: List pages (filtered by ownership, superusers see all)
-- **DELETE /fbpages?id={page_id}**: Remove page (authorization check)
+- **PATCH /fbpages?id={page_id}&enabled={true|false}**: Toggle page enabled status
+- **POST /fbpages?sync=1**: Sync pages from Facebook using stored token (no OAuth needed)
 - **POST /fbpages?refresh=1**: Trigger manual event refresh
 - All endpoints require authentication via `requireAuth(req)`
 

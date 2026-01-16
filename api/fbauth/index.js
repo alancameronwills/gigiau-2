@@ -5,7 +5,6 @@
 
 const { TableStorer } = require('../SharedCode/tableStorer');
 const { generateSession, validateSession, destroySession, extractToken } = require('../SharedCode/jwtSession');
-const cookie = require('cookie');
 
 const FB_APP_ID = process.env.FB_APP_ID;
 const FB_APP_SECRET = process.env.FB_APP_SECRET;
@@ -14,7 +13,7 @@ const FB_CLIENT_URL = process.env.FB_CLIENT_URL || 'http://localhost';
 const SUPERUSER_IDS = (process.env.SUPERUSER_IDS || '').split(',').filter(Boolean);
 
 const FB_GRAPH_API = 'https://graph.facebook.com/v18.0';
-const FB_OAUTH_SCOPES = 'pages_manage_metadata,pages_read_engagement,pages_show_list';
+const FB_OAUTH_SCOPES = 'pages_read_engagement,pages_show_list';
 
 /**
  * Get CORS headers for the response
@@ -99,9 +98,7 @@ async function handleLogin(context, req) {
         `client_id=${FB_APP_ID}&` +
         `redirect_uri=${encodeURIComponent(FB_REDIRECT_URI)}&` +
         `scope=${FB_OAUTH_SCOPES}&` +
-        `response_type=code&` +
-        `auth_type=rerequest&` +  // Force re-request of permissions
-        `display=popup`;  // Use popup display mode
+        `response_type=code`;
 
     console.log('[FBAuth] Redirecting to OAuth:', authUrl);
 
@@ -209,6 +206,17 @@ async function handleCallback(context, req) {
             const pageTable = TableStorer('gigiaufbpages');
 
             for (const page of pagesData.data) {
+                // Check if page already exists to preserve enabled status
+                let existingPage = null;
+                try {
+                    existingPage = await pageTable.getEntity('page', page.id);
+                } catch (e) {
+                    // Page doesn't exist yet
+                }
+
+                const isNewPage = !existingPage;
+                const enabled = isNewPage ? false : existingPage.enabled;
+
                 await pageTable.upsertEntity({
                     partitionKey: 'page',
                     rowKey: page.id,
@@ -216,12 +224,12 @@ async function handleCallback(context, req) {
                     page_name: page.name,
                     access_token: page.access_token,  // Permanent page token
                     user_facebook_id: facebook_id,
-                    enabled: true,
-                    created_at: new Date().toISOString(),
+                    enabled: enabled,
+                    created_at: existingPage?.created_at || new Date().toISOString(),
                     modified: new Date().toISOString()
                 });
 
-                console.log(`[FBAuth] Added page: ${page.name} (${page.id})`);
+                console.log(`[FBAuth] ${isNewPage ? 'Added' : 'Updated'} page: ${page.name} (${page.id}), enabled: ${enabled}`);
             }
         } else {
             console.warn('[FBAuth] No pages found for user');
@@ -262,21 +270,13 @@ async function handleLogout(context, req) {
         await destroySession(token);
     }
 
-    // Clear cookie
-    const cookieValue = cookie.serialize('fb_session', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 0,
-        path: '/'
-    });
-
     context.res = {
-        status: 302,
+        status: 200,
         headers: {
-            'Location': `${FB_CLIENT_URL}/fbadmin.html`,
-            'Set-Cookie': cookieValue
+            'Content-Type': 'application/json',
+            ...getCorsHeaders(req)
         },
-        body: ''
+        body: JSON.stringify({ success: true, message: 'Logged out' })
     };
 }
 

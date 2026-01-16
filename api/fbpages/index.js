@@ -7,6 +7,7 @@ const { TableStorer } = require('../SharedCode/tableStorer');
 const { requireAuth } = require('../SharedCode/jwtSession');
 
 const FB_CLIENT_URL = process.env.FB_CLIENT_URL || 'http://localhost';
+const FB_GRAPH_API = 'https://graph.facebook.com/v18.0';
 
 /**
  * Get CORS headers for the response
@@ -17,7 +18,7 @@ function getCorsHeaders(req) {
         'Access-Control-Allow-Origin': origin,
         'Access-Control-Allow-Credentials': 'true',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
-        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
+        'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS'
     };
 }
 
@@ -56,8 +57,10 @@ async function azureHandler(context, req) {
         // Route based on method and query params
         if (method === 'GET' && !req.query.id) {
             await handleListPages(context, req, user);
-        } else if (method === 'DELETE' || req.query.id) {
-            await handleDeletePage(context, req, user);
+        } else if (method === 'PATCH' || (method === 'POST' && req.query.id)) {
+            await handleTogglePage(context, req, user);
+        } else if (method === 'POST' && req.query.sync) {
+            await handleSyncPages(context, req, user);
         } else if (method === 'POST' && req.query.refresh) {
             await handleRefresh(context, req, user);
         } else {
@@ -136,10 +139,11 @@ async function handleListPages(context, req, user) {
 }
 
 /**
- * Handle DELETE /fbpages?id={page_id} - Remove a page
+ * Handle PATCH /fbpages?id={page_id}&enabled={true|false} - Toggle page enabled status
  */
-async function handleDeletePage(context, req, user) {
+async function handleTogglePage(context, req, user) {
     const pageId = req.query.id;
+    const enabledParam = req.query.enabled;
 
     if (!pageId) {
         context.res = {
@@ -153,6 +157,19 @@ async function handleDeletePage(context, req, user) {
         return;
     }
 
+    if (enabledParam === undefined) {
+        context.res = {
+            status: 400,
+            headers: {
+                'Content-Type': 'application/json',
+                ...getCorsHeaders(req)
+            },
+            body: JSON.stringify({ error: 'Missing enabled parameter' })
+        };
+        return;
+    }
+
+    const enabled = enabledParam === 'true' || enabledParam === '1';
     const pageTable = TableStorer('gigiaufbpages');
 
     // Get the page
@@ -170,7 +187,7 @@ async function handleDeletePage(context, req, user) {
         return;
     }
 
-    // Authorization check: only owner or superuser can delete
+    // Authorization check: only owner or superuser can toggle
     if (!user.isSuperuser && page.user_facebook_id !== user.facebook_id) {
         context.res = {
             status: 403,
@@ -178,23 +195,136 @@ async function handleDeletePage(context, req, user) {
                 'Content-Type': 'application/json',
                 ...getCorsHeaders(req)
             },
-            body: JSON.stringify({ error: 'Not authorized to delete this page' })
+            body: JSON.stringify({ error: 'Not authorized to modify this page' })
         };
         return;
     }
 
-    // Delete the page
-    await pageTable.deleteEntity('page', pageId);
+    // Update the page
+    await pageTable.upsertEntity({
+        ...page,
+        enabled: enabled,
+        modified: new Date().toISOString()
+    });
 
-    console.log(`[FBPages] Deleted page ${page.page_name} (${pageId}) by user ${user.facebook_id}`);
+    console.log(`[FBPages] ${enabled ? 'Enabled' : 'Disabled'} page ${page.page_name} (${pageId}) by user ${user.facebook_id}`);
 
     context.res = {
         status: 200,
         headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
+            ...getCorsHeaders(req)
         },
-        body: JSON.stringify({ success: true, message: 'Page deleted' })
+        body: JSON.stringify({ success: true, enabled: enabled, message: `Page ${enabled ? 'enabled' : 'disabled'}` })
+    };
+}
+
+/**
+ * Handle POST /fbpages?sync=1 - Sync pages from Facebook using stored token
+ */
+async function handleSyncPages(context, req, user) {
+    const userTable = TableStorer('gigiaufbusers');
+    const pageTable = TableStorer('gigiaufbpages');
+
+    // Get user's stored access token
+    let userData;
+    try {
+        userData = await userTable.getEntity('user', user.facebook_id);
+    } catch (e) {
+        userData = null;
+    }
+
+    if (!userData || !userData.access_token) {
+        context.res = {
+            status: 400,
+            headers: {
+                'Content-Type': 'application/json',
+                ...getCorsHeaders(req)
+            },
+            body: JSON.stringify({ error: 'No stored access token. Please log out and log in again.' })
+        };
+        return;
+    }
+
+    // Fetch pages from Facebook
+    const pagesUrl = `${FB_GRAPH_API}/me/accounts?access_token=${userData.access_token}`;
+    const pagesResponse = await fetch(pagesUrl);
+    const pagesData = await pagesResponse.json();
+
+    if (pagesData.error) {
+        console.error('[FBPages] Sync error:', pagesData.error);
+        // Token might be expired
+        context.res = {
+            status: 400,
+            headers: {
+                'Content-Type': 'application/json',
+                ...getCorsHeaders(req)
+            },
+            body: JSON.stringify({ error: 'Facebook token expired. Please log out and log in again.' })
+        };
+        return;
+    }
+
+    if (!pagesData.data || pagesData.data.length === 0) {
+        context.res = {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                ...getCorsHeaders(req)
+            },
+            body: JSON.stringify({ success: true, added: 0, updated: 0, message: 'No pages found on Facebook' })
+        };
+        return;
+    }
+
+    let added = 0;
+    let updated = 0;
+
+    for (const page of pagesData.data) {
+        // Check if page already exists
+        let existingPage = null;
+        try {
+            existingPage = await pageTable.getEntity('page', page.id);
+        } catch (e) {
+            // Page doesn't exist
+        }
+
+        const isNewPage = !existingPage;
+        const enabled = isNewPage ? false : existingPage.enabled;
+
+        await pageTable.upsertEntity({
+            partitionKey: 'page',
+            rowKey: page.id,
+            page_id: page.id,
+            page_name: page.name,
+            access_token: page.access_token,
+            user_facebook_id: user.facebook_id,
+            enabled: enabled,
+            created_at: existingPage?.created_at || new Date().toISOString(),
+            modified: new Date().toISOString()
+        });
+
+        if (isNewPage) {
+            added++;
+            console.log(`[FBPages] Sync added page: ${page.name} (${page.id})`);
+        } else {
+            updated++;
+            console.log(`[FBPages] Sync updated page: ${page.name} (${page.id})`);
+        }
+    }
+
+    context.res = {
+        status: 200,
+        headers: {
+            'Content-Type': 'application/json',
+            ...getCorsHeaders(req)
+        },
+        body: JSON.stringify({
+            success: true,
+            added: added,
+            updated: updated,
+            message: added > 0 ? `Found ${added} new page(s)` : 'Pages are up to date'
+        })
     };
 }
 

@@ -100,16 +100,6 @@
             background: #5a6268;
         }
 
-        .btn-danger {
-            background: #dc3545;
-            padding: 8px 16px;
-            font-size: 14px;
-        }
-
-        .btn-danger:hover {
-            background: #c82333;
-        }
-
         .user-info {
             background: #f8f9fa;
             padding: 15px;
@@ -153,6 +143,72 @@
         .page-card:hover {
             border-color: #667eea;
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .page-card.disabled {
+            background: #fff;
+            border-color: #dee2e6;
+            opacity: 0.7;
+        }
+
+        .page-card.disabled .page-name {
+            color: #6c757d;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle-status {
+            font-size: 14px;
+            color: #666;
         }
 
         .page-name {
@@ -230,7 +286,7 @@
     <div class="container">
         <a href="/" class="back-link">← Back to Events</a>
 
-        <h1>Facebook Pages Manager</h1>
+        <h1>Gigiau Facebook Pages Manager</h1>
         <p class="subtitle">Connect your Facebook pages to add events to Gigiau</p>
 
         <div id="status" class="status"></div>
@@ -252,8 +308,8 @@
             </div>
 
             <div class="action-buttons">
-                <button class="btn btn-primary" onclick="login()">Add More Pages</button>
-                <button class="btn btn-secondary" onclick="refreshEvents()">Refresh Events</button>
+                <button class="btn btn-primary" onclick="syncPages()">Show all the Facebook Pages that you own</button>
+                <button id="refreshEventsBtn" class="btn btn-secondary" onclick="refreshEvents()" style="display:none;">Refresh Events</button>
             </div>
 
             <div id="loading" class="loading" style="display:none;">
@@ -341,11 +397,47 @@
 
             if (currentUser.isSuperuser) {
                 document.getElementById('superuserBadge').style.display = 'inline';
+                document.getElementById('refreshEventsBtn').style.display = 'inline-block';
             }
         }
 
         function login() {
             window.location.href = `${api}/fbauth-login`;
+        }
+
+        async function syncPages() {
+            showStatus('Syncing pages from Facebook...', 'info');
+
+            try {
+                const token = localStorage.getItem('fb_session');
+                const headers = {};
+
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(`${api}/fbpages?sync=1`, {
+                    method: 'POST',
+                    headers: headers
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    // Token might be expired - redirect to OAuth
+                    if (result.error && result.error.includes('expired')) {
+                        showStatus('Session expired. Redirecting to Facebook...', 'info');
+                        setTimeout(() => login(), 1500);
+                        return;
+                    }
+                    throw new Error(result.error || 'Failed to sync pages');
+                }
+
+                showStatus(result.message, 'success');
+                await loadPages();
+            } catch (error) {
+                showStatus('Error syncing pages: ' + error.message, 'error');
+            }
         }
 
         async function logout() {
@@ -398,7 +490,7 @@
                     container.innerHTML = `
                         <div class="empty-state">
                             <h2>No pages connected</h2>
-                            <p>Click "Add More Pages" to connect your Facebook pages</p>
+                            <p>Click "Show all the Facebook Pages that you own" to connect your pages</p>
                         </div>
                     `;
                     return;
@@ -421,7 +513,8 @@
 
         function createPageCard(page) {
             const card = document.createElement('div');
-            card.className = 'page-card';
+            card.className = 'page-card' + (page.enabled ? '' : ' disabled');
+            card.id = `page-${page.page_id}`;
 
             let metaHtml = '';
             if (currentUser.isSuperuser && page.owner_name) {
@@ -437,20 +530,20 @@
                 <div class="page-name">${escapeHtml(page.page_name)}</div>
                 ${metaHtml}
                 <div class="page-actions">
-                    <button class="btn btn-danger" onclick="removePage('${page.page_id}', '${escapeHtml(page.page_name)}')">
-                        Remove
-                    </button>
+                    <label class="toggle-label">
+                        <label class="toggle-switch">
+                            <input type="checkbox" ${page.enabled ? 'checked' : ''} onchange="togglePage('${page.page_id}', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-status">${page.enabled ? 'Events included in Gigiau' : 'Events not included'}</span>
+                    </label>
                 </div>
             `;
 
             return card;
         }
 
-        async function removePage(pageId, pageName) {
-            if (!confirm(`Remove "${pageName}" from Gigiau?\n\nThis will stop showing events from this page.`)) {
-                return;
-            }
-
+        async function togglePage(pageId, enabled) {
             try {
                 const token = localStorage.getItem('fb_session');
                 const headers = {};
@@ -459,19 +552,32 @@
                     headers['Authorization'] = `Bearer ${token}`;
                 }
 
-                const response = await fetch(`${api}/fbpages?id=${pageId}`, {
-                    method: 'DELETE',
+                const response = await fetch(`${api}/fbpages?id=${pageId}&enabled=${enabled}`, {
+                    method: 'PATCH',
                     headers: headers
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to remove page');
+                    throw new Error('Failed to update page');
                 }
 
-                showStatus(`Removed ${pageName}`, 'success');
-                await loadPages();
+                const result = await response.json();
+
+                // Update UI
+                const card = document.getElementById(`page-${pageId}`);
+                if (card) {
+                    card.className = 'page-card' + (enabled ? '' : ' disabled');
+                    const statusSpan = card.querySelector('.toggle-status');
+                    if (statusSpan) {
+                        statusSpan.textContent = enabled ? 'Events included in Gigiau' : 'Events not included';
+                    }
+                }
+
+                showStatus(result.message, 'success');
             } catch (error) {
-                showStatus('Error removing page: ' + error.message, 'error');
+                showStatus('Error updating page: ' + error.message, 'error');
+                // Reload to reset toggle state
+                await loadPages();
             }
         }
 

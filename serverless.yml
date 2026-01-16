@@ -20,7 +20,7 @@ provider:
       allowedMethods:
         - GET
         - POST
-        - DELETE
+        - PATCH
         - OPTIONS
       allowCredentials: true
 
