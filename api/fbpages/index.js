@@ -246,33 +246,46 @@ async function handleSyncPages(context, req, user) {
         return;
     }
 
-    // Fetch pages from Facebook
-    const pagesUrl = `${FB_GRAPH_API}/me/accounts?access_token=${userData.access_token}`;
-    const pagesResponse = await fetch(pagesUrl);
-    const pagesData = await pagesResponse.json();
+    // Fetch pages from Facebook (with pagination)
+    let allPages = [];
+    let pagesUrl = `${FB_GRAPH_API}/me/accounts?limit=100&access_token=${userData.access_token}`;
 
-    if (pagesData.error) {
-        console.error('[FBPages] Sync error:', pagesData.error);
-        // Token might be expired
-        context.res = {
-            status: 400,
-            headers: {
-                'Content-Type': 'application/json',
-                ...getCorsHeaders(req)
-            },
-            body: JSON.stringify({ error: 'Facebook token expired. Please log out and log in again.' })
-        };
-        return;
+    while (pagesUrl) {
+        const pagesResponse = await fetch(pagesUrl);
+        const pagesData = await pagesResponse.json();
+
+        if (pagesData.error) {
+            console.error('[FBPages] Sync error:', pagesData.error);
+            context.res = {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...getCorsHeaders(req)
+                },
+                body: JSON.stringify({ error: 'Facebook token expired. Please log out and log in again.' })
+            };
+            return;
+        }
+
+        if (pagesData.data) {
+            allPages = allPages.concat(pagesData.data);
+        }
+
+        // Check for more pages
+        pagesUrl = pagesData.paging?.next || null;
     }
 
-    if (!pagesData.data || pagesData.data.length === 0) {
+    console.log(`[FBPages] Facebook returned ${allPages.length} pages for user ${user.facebook_id}`);
+    allPages.forEach(p => console.log(`[FBPages]   - ${p.name} (${p.id})`));
+
+    if (allPages.length === 0) {
         context.res = {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
                 ...getCorsHeaders(req)
             },
-            body: JSON.stringify({ success: true, added: 0, updated: 0, message: 'No pages found on Facebook' })
+            body: JSON.stringify({ success: true, added: 0, updated: 0, total_from_facebook: 0, message: 'No pages found on Facebook' })
         };
         return;
     }
@@ -280,7 +293,7 @@ async function handleSyncPages(context, req, user) {
     let added = 0;
     let updated = 0;
 
-    for (const page of pagesData.data) {
+    for (const page of allPages) {
         // Check if page already exists
         let existingPage = null;
         try {
@@ -323,6 +336,7 @@ async function handleSyncPages(context, req, user) {
             success: true,
             added: added,
             updated: updated,
+            total_from_facebook: allPages.length,
             message: added > 0 ? `Found ${added} new page(s)` : 'Pages are up to date'
         })
     };

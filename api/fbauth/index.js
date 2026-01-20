@@ -195,17 +195,33 @@ async function handleCallback(context, req) {
 
         console.log(`[FBAuth] User ${name} (${facebook_id}) logged in`);
 
-        // Step 5: Fetch user's pages
-        const pagesUrl = `${FB_GRAPH_API}/me/accounts?access_token=${userAccessToken}`;
-        const pagesResponse = await fetch(pagesUrl);
-        const pagesData = await pagesResponse.json();
+        // Step 5: Fetch user's pages (with pagination)
+        let allPages = [];
+        let pagesUrl = `${FB_GRAPH_API}/me/accounts?limit=100&access_token=${userAccessToken}`;
 
-        if (pagesData.error) {
-            console.error('[FBAuth] Pages fetch error:', pagesData.error);
-        } else if (pagesData.data && pagesData.data.length > 0) {
+        while (pagesUrl) {
+            const pagesResponse = await fetch(pagesUrl);
+            const pagesData = await pagesResponse.json();
+
+            if (pagesData.error) {
+                console.error('[FBAuth] Pages fetch error:', pagesData.error);
+                break;
+            }
+
+            if (pagesData.data) {
+                allPages = allPages.concat(pagesData.data);
+            }
+
+            // Check for more pages
+            pagesUrl = pagesData.paging?.next || null;
+        }
+
+        console.log(`[FBAuth] Facebook returned ${allPages.length} pages total for user ${facebook_id}`);
+
+        if (allPages.length > 0) {
             const pageTable = TableStorer('gigiaufbpages');
 
-            for (const page of pagesData.data) {
+            for (const page of allPages) {
                 // Check if page already exists to preserve enabled status
                 let existingPage = null;
                 try {

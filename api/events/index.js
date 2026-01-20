@@ -860,7 +860,7 @@ let ticketsource = async (tsid) => {
     return r;
 }).friendly = "Cor Dyfed";
 
-let gigio = async (source, defaultVenue = "") => {
+let gigio = async (source, defaultVenue = "", defaultURL = "") => {
     let r = [];
     try {
         const response = await ftext(source);
@@ -875,7 +875,7 @@ let gigio = async (source, defaultVenue = "") => {
             return {
                 title: langSplit(event.title),
                 image: event.pic,
-                url: event.meta.bookinglink || "",
+                url: event.meta.bookinglink || defaultURL,
                 venue: langSplit(event.meta.venue || defaultVenue),
                 text: event.content,
                 subtitle: langSplit(event.meta.dtinfo || ""),
@@ -893,12 +893,16 @@ let gigio = async (source, defaultVenue = "") => {
 }).friendly = "Pawb";
 
 (handlers["newportmh"] = async () => {
-    return await gigio("https://newportmemorialhall.co.uk/whats-on/?json=1", "Newport Memorial Hall|Neuadd Goffa Trefdraeth");
+    return await gigio("https://newportmemorialhall.co.uk/whats-on/?json=1",
+        "Newport Memorial Hall|Neuadd Goffa Trefdraeth",
+        "https://newportmemorialhall.co.uk/whats-on/");
 }).friendly = "Newport MH";
 
 
 (handlers["peppers"] = async () => {
-    return await gigio("https://peppers-hub.co.uk/events/?json=1", "Peppers Fishguard|Peppers Abergwaun");
+    return await gigio("https://peppers-hub.co.uk/events/?json=1",
+        "Peppers Fishguard|Peppers Abergwaun",
+        "https://peppers-hub.co.uk/events/");
 }).friendly = "Peppers";
 
 /*
