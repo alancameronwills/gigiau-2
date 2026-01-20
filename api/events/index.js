@@ -895,7 +895,7 @@ let gigio = async (source, defaultVenue = "", defaultURL = "") => {
 (handlers["newportmh"] = async () => {
     return await gigio("https://newportmemorialhall.co.uk/whats-on/?json=1",
         "Newport Memorial Hall|Neuadd Goffa Trefdraeth",
-        "https://newportmemorialhall.co.uk/whats-on/");
+        "");
 }).friendly = "Newport MH";
 
 
