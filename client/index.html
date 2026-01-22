@@ -77,7 +77,7 @@
             }
 
             events = await fetch(data + "/json/events.json?v=" + Date.now()).then(r => r.json());
-            events.shows.sort(function (a,b) {return (a.dt||0)-(b.dt||0);});
+            events.shows.sort(function (a, b) { return (a.dt || 0) - (b.dt || 0); });
             assignIds();
             markFirstShowOfEachDate();
             setSideButtons();
@@ -160,6 +160,9 @@
 
         function showAllFiltered() {
             let table = document.getElementById('table');
+            if (location.search.match(/description/)) {
+                table.classList.add("showdescriptions");
+            }
             if (!table.innerText.trim()) {
                 table.innerHTML = (events.shows.map((show, ix) => ((show.dt || 0) >= lastMidnight) ? showOne(show, ix) : "").join('\n'));
             }
@@ -242,10 +245,15 @@
                     <div class='title'><a ${link}>${show.title}</a></div>
                     <div class='subtitle'>${show.subtitle || ""}</div>
                     <div class='date'>${show.date}</div>
-                    <div class='description'>${show.text}</div>
+                    <div class='description' onclick="showDescription(event, ${ix})">${show.text||""}</div>
+                    <div class='mask'></div>
                 </div>`;
         }
-
+        function showDescription(e, i) {
+            let oldItem = document.querySelector("[class*=expand]");
+            oldItem?.classList.remove("expand");
+            if (oldItem != e.currentTarget) e.currentTarget.classList.add("expand");
+        }
 
         class Filters {
             static #observers = [];
