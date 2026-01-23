@@ -22,6 +22,14 @@ function sl(en, cy) {
     return `<span class='en'>${escapeHtml(en)}</span><span class='cy'>${escapeHtml(cy)}</span>`;
 }
 
+function stripText(s) {
+    return s.replace(/https:\/\/[-a-z0-9+_?=&#%\/.:]* */gi, " ")
+    .replace(/<\/p>|<\/div>|<\/ul>/sg, "¬¬¬")
+    .replace(/<.*?>/sg, "")
+    .replace(/¬¬[¬ ]+/g, "<br/>")
+    .replace(/\n[\n\r\t ]+/, "\n");
+}
+
 function langSplit(s) {
     let splits = s?.split(/ *\| */) || [""];
     if (splits.length > 1) return sl(splits[0], splits[1]);
@@ -359,7 +367,14 @@ let handlers = [];
             ri.venue = "Queens Hall Narberth";
             ri.category = "live"; //(event.match(/<[^>]+badge-event.*?>.*?</gs)?.map(b => m(b, />(.*)</s))?.join(", ") || "").toLowerCase();
             r.push(ri);
-        })
+        });
+        await Promise.all(r.map(async ri => {
+            try {
+                let eventText = await ftext(ri.url);
+                let description = m(eventText, /<div[^>]*event-description.*?<div.*?>(.*?)<\/div>/s);
+                ri.text = stripText(description);
+            } catch (e) { }
+        }))
 
     } catch (e) { return { e: e.toString() }; }
     return r;
@@ -503,10 +518,20 @@ let handlers = [];
         ri.title = m(show, /<h3.*?>\s*<a.*?title="(.*?)"/s);
         ri.category = "live";
         ri.venue = "HaverHub";
+        ri.text = "";
         if (ri.dt) {
             r.push(ri);
         }
     });
+
+    await Promise.all(r.map(async ri => {
+        try {
+            let eventText = await ftext(ri.url);
+            let description = m(eventText, /<div[^>]*event-description.*?>(.*?)<\/div>/s);
+            ri.text = stripText(description);
+        } catch (e) { }
+    }))
+
     return r;
 }).friendly = "Haverhub";
 
@@ -522,6 +547,7 @@ let handlers = [];
             let url = m(h1, /href=['"](.*?)['"]/s);
             let title = m(h1, />(.*?)</);
             let image = m(show, /<img\s+src=['"](.*?)['"]/s);
+            let text = stripText(m(show, /<div[^>]+synopsis.*?>(.*?)<\/div>/s));
             let dateList = [...show.matchAll(/PeformanceListDate.*?>(.*?)</sg)];
             let dateSet = [];
             let startDate = "", endDate = "";
@@ -550,7 +576,7 @@ let handlers = [];
                         urlset: show.match(/href="(.*?)"/g).map(href => m(href, /"(.*?)"/s)),
                         title: title.replace(/^FFS */, ""),
                         image: image,
-                        text: "",
+                        text: text,
                         venue: "Theatr Gwaun"
                     });
                 }
@@ -960,7 +986,7 @@ handlers["cordyfed"] = await ticketsource("cor-dyfed-choir");
                 title: jso.name,
                 category: "live",
                 url: jso.url,
-                text: jso.description
+                text: stripText(jso.description)
             });
         }
     });
