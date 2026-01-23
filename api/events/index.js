@@ -2,6 +2,7 @@ const { escapeHtml, escapeRegex } = require('../SharedCode/security.js');
 
 const DMhmformat = { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" };
 const DMYformat = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
+const DMYhmformat = { weekday: "long", day: "numeric", month: "short", year:"numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" };
 
 function attr(s, cls) {
     // Security: Escape regex special characters to prevent regex injection
@@ -24,10 +25,21 @@ function sl(en, cy) {
 
 function stripText(s) {
     return s.replace(/https:\/\/[-a-z0-9+_?=&#%\/.:]* */gi, " ")
-    .replace(/<\/p>|<\/div>|<\/ul>/sg, "¬¬¬")
-    .replace(/<.*?>/sg, "")
-    .replace(/¬¬[¬ ]+/g, "<br/>")
-    .replace(/\n[\n\r\t ]+/, "\n");
+        .replace(/<\/p>|<\/div>|<\/ul>/sg, "¬¬¬")
+        .replace(/<.*?>/sg, "")
+        .replace(/¬¬[¬ ]+/g, "<br/>")
+        .replace(/\n[\n\r\t ]+/, "\n")
+        .trim();
+}
+
+async function getDescriptions(r, re) {
+    await Promise.all(r.map(async ri => {
+        try {
+            let eventText = await ftext(ri.url);
+            let description = m(eventText, re);
+            ri.text = stripText(description);
+        } catch (e) { }
+    }))
 }
 
 function langSplit(s) {
@@ -186,11 +198,11 @@ let handlers = [];
     try {
         let source = await ftext("https://www.bluestonebrewing.co.uk/collections/events/", true);
         let products = source.match(/<product-card.*?<\/product-card>/gs) || [];
-        return products.map(product => {
+        let r = products.map(product => {
             let title = m(product, /<product-card-title>(.*?)</s);
             let dateString = datex(m(product, /<p>(.*?)<\/p>/s));
             return {
-                image: m(product, /<img[^>]*src="(.*?)"/s),
+                image: m(product, /<img[^>]*src="(.*?)"/s)?.replace(/\?.*/,"") || "",
                 title: title,
                 url: "https://www.bluestonebrewing.co.uk" + m(product, /href="(.*?)"/s),
                 venue: "Bluestone Brewing",
@@ -200,6 +212,8 @@ let handlers = [];
                 dt: new Date(dateString.replace(/at.*/, "")).valueOf() || 0
             }
         });
+        await getDescriptions(r, /<div\s+class=[^>]*-description.*?>(.*?)<\/div>/s);
+        return r.filter(r=>r.dt);
     } catch (e) { return { e: e.toString() } }
 }).friendly = "Bluestone Brewing";
 
@@ -368,14 +382,7 @@ let handlers = [];
             ri.category = "live"; //(event.match(/<[^>]+badge-event.*?>.*?</gs)?.map(b => m(b, />(.*)</s))?.join(", ") || "").toLowerCase();
             r.push(ri);
         });
-        await Promise.all(r.map(async ri => {
-            try {
-                let eventText = await ftext(ri.url);
-                let description = m(eventText, /<div[^>]*event-description.*?<div.*?>(.*?)<\/div>/s);
-                ri.text = stripText(description);
-            } catch (e) { }
-        }))
-
+        await getDescriptions(r, /<div[^>]*event-description.*?<div.*?>(.*?)<\/div>/s);
     } catch (e) { return { e: e.toString() }; }
     return r;
 }).friendly = "Queens Theatre";
@@ -524,13 +531,7 @@ let handlers = [];
         }
     });
 
-    await Promise.all(r.map(async ri => {
-        try {
-            let eventText = await ftext(ri.url);
-            let description = m(eventText, /<div[^>]*event-description.*?>(.*?)<\/div>/s);
-            ri.text = stripText(description);
-        } catch (e) { }
-    }))
+    await getDescriptions(r, /<div[^>]*event-description.*?>(.*?)<\/div>/s);
 
     return r;
 }).friendly = "Haverhub";
@@ -977,9 +978,10 @@ handlers["cordyfed"] = await ticketsource("cor-dyfed-choir");
         if (v.indexOf("<script") == 0) {
             let jsonMatch = v.match(/\{.*\}/s)[0];
             let jso = JSON.parse(jsonMatch);
+            let date = new Date(jso.startDate);
             r.push({
-                date: jso.startDate,
-                dt: new Date(jso.startDate).valueOf(),
+                date: date.toLocaleString("en-GB", DMYhmformat),
+                dt: date.valueOf(),
                 venue: "Rhosygilwen",
                 price: jso.offers?.price,
                 image: jso.image,
