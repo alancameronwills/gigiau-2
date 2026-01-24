@@ -1,6 +1,7 @@
 :root {
     --font: 1.2rem Arial, Geneva, Helvetica, sans-serif;
     --menufont: 1rem Arial, Geneva, Helvetica, sans-serif;
+    --descriptionheight: 50px;
     box-sizing: border-box;
 }
 
@@ -54,12 +55,14 @@ a:link {
     overflow: hidden;
 }
 
-.dateHeading.hide, .dateHeading.unsearch  {
+.dateHeading.hide,
+.dateHeading.unsearch {
     height: 0;
     padding: 0;
 }
 
-.show.hide, .show.unsearch {
+.show.hide,
+.show.unsearch {
     width: 0;
     height: 0;
     padding: 0;
@@ -69,14 +72,14 @@ a:link {
 .show {
     user-select: none;
     cursor: pointer;
-    column-gap: 20px;
     display: flex;
+    flex-direction: column;
     justify-content: start;
-    padding: 10px 5px;
+    align-content: flex-start;
+    padding: 10px 5px 0 5px;
     margin: 4px 6px;
     width: 200px;
-    flex-wrap: wrap;
-    align-content: flex-start;
+    flex-wrap: nowrap;
     background-color: white;
     border-radius: 4px;
     transition: all 1s;
@@ -87,10 +90,10 @@ a:link {
 .show .mask {
     position: absolute;
     bottom: 0;
-    height: 10px;
+    height: 20px;
     width: 100%;
     background-color: white;
-    background: linear-gradient(0deg,rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 100%);
+    background: linear-gradient(0deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 100%);
 }
 
 .show.favorite::after {
@@ -125,13 +128,13 @@ a:link {
     width: 2em;
     height: 2em;
     position: relative;
-    font-size:large;
+    font-size: large;
 }
 
 #sideButtons>div::after {
     position: absolute;
     scale: 1.4;
-} 
+}
 
 #favoriteButton::after {
     content: "😊";
@@ -157,49 +160,65 @@ a:link {
 }
 
 .date {
-    grid-column: 2;
-    grid-row: 4;
     font-size: small;
 }
 
 .venue {
     cursor: pointer;
-    grid-column: 2;
-    grid-row: 1;
 }
 
 .title {
     font-weight: bold;
-    grid-column: 2;
-    grid-row: 2;
 }
 
 .subtitle {
-    grid-column: 2;
-    grid-row: 3;
     font-size: small;
 }
 
-.image {
-    grid-row-start: 1;
-    grid-row-end: 5;
-    grid-column: 1;
+.description-container {
+    display: flex;
+    margin: 8px 0 0 0;
+}
+.description-prop {
+    width: 1px;
+    height: var(--descriptionheight);
 }
 
-.description {
-    grid-column: 3;
-    grid-row-start: 1;
-    grid-row-end: 5;
-    max-height: 50px;
-    font-size: small;
-    color: rgb(190, 189, 189);
-    background-color: white;
-    margin-top: 8px;
+.description-prop:has(+ .description:empty) {
     display: none;
 }
 
-#table.showdescriptions .description {
-    display: block;
+.description:not(:empty)::after {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    border-radius: 7px;
+    color: gray;
+    background-color: white;
+    width: 30px;
+    height: 12px;
+    text-align: center;
+    z-index: 10;
+    font-weight: bold;
+    padding-bottom: 2px;
+    border: solid gray 1px;
+}
+.description:not(:empty):not(.expand)::after {
+    content:  "• • •";
+}
+.description:not(:empty).expand::after {
+    content:  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='gray' viewBox='0 4 24 24'%3E%3Cpath d='m12.6 14.74 4.22-4.58c.43-.46.06-1.16-.6-1.16H7.78c-.66 0-1.03.7-.6 1.16l4.22 4.58c.31.34.89.34 1.2 0'/%3E%3C/svg%3E");
+}
+
+.description {
+    max-height:  var(--descriptionheight);
+    font-size: small;
+    color: rgb(190, 189, 189);
+    background-color: white;
+}
+
+#table.hide-descriptions .description-container {
+    display: none;
 }
 
 .expand.description {
@@ -255,8 +274,9 @@ a:link {
 }
 
 #searchField:not(.reveal) {
-    display:none;
+    display: none;
 }
+
 #searchField {
     top: 10px;
     left: 25vw;
@@ -265,6 +285,7 @@ a:link {
     padding: 2px;
     border-radius: 4px;
 }
+
 #searchField>input {
     width: 40vw;
 }
@@ -299,14 +320,14 @@ a:link {
 .slideout {
     position: fixed;
     display: flex;
-    flex-wrap:wrap;
+    flex-wrap: wrap;
     justify-content: center;
     align-content: center;
     left: 0;
     right: 0;
     bottom: 150vh;
     height: 100vh;
-    padding:  0;
+    padding: 0;
     transition: all 1s ease-in-out;
     background-color: rgba(0, 0, 0, 0.4);
 }
@@ -325,6 +346,7 @@ a:link {
     border: 1px solid blue;
     transform: rotate(90deg);
 }
+
 .slideout-content {
     background-color: rgba(192, 192, 192, 0.92);
     border-radius: 6px;
@@ -336,7 +358,7 @@ a:link {
     justify-content: space-around;
     gap: 20px;
     align-items: center;
-    overflow-y:auto;
+    overflow-y: auto;
     max-height: 100%;
     max-width: 80vw;
 }
@@ -344,11 +366,13 @@ a:link {
 .slideout.visible {
     bottom: 0;
 }
+
 .slideout.visible .slideout-content {
     margin-top: 0;
 }
+
 .slideout-content>div {
-    overflow-y:auto;
+    overflow-y: auto;
 }
 
 #promoterMenu {

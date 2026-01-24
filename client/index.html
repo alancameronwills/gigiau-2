@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en-gb">
-<!-- 2026-01-22 -->
+<!-- 2026-01-24 18:03-->
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/x-icon" href="gigiau.ico">
     <link rel="apple-touch-icon" href="gigiau-fav.png">
-    <link rel="stylesheet" type="text/css" href="css/gigiau.css?v=2601221648" />
+    <link rel="stylesheet" type="text/css" href="css/gigiau.css?v=2601241803" />
     <meta property="og:image" content="/gigiau.png">
     <meta property="og:title" content="Gigiau" />
     <meta property="og:url" content="https://gigiau.uk/" />
@@ -161,7 +161,7 @@
         function showAllFiltered() {
             let table = document.getElementById('table');
             if (location.search.match(/description/)) {
-                table.classList.add("showdescriptions");
+                table.classList.add("hide-descriptions");
             }
             if (!table.innerText.trim()) {
                 table.innerHTML = (events.shows.map((show, ix) => ((show.dt || 0) >= lastMidnight) ? showOne(show, ix) : "").join('\n'));
@@ -245,8 +245,11 @@
                     <div class='title'><a ${link}>${show.title}</a></div>
                     <div class='subtitle'>${show.subtitle || ""}</div>
                     <div class='date'>${show.date}</div>
-                    <div class='description' onclick="showDescription(event, ${ix})">${show.text||""}</div>
-                    <div class='mask'></div>
+                    <div class='description-container'>
+                        <div class='description-prop'></div>
+                        <div class='description' onclick="showDescription(event, ${ix})">${show.text||""}</div>
+                        <div class='mask'></div>
+                    </div>
                 </div>`;
         }
         function showDescription(e, i) {
