@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en-gb">
-<!-- 2026-01-24 18:03-->
+<!-- 2026-01-25 02:46-->
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/x-icon" href="gigiau.ico">
     <link rel="apple-touch-icon" href="gigiau-fav.png">
-    <link rel="stylesheet" type="text/css" href="css/gigiau.css?v=2601241803" />
+    <link rel="stylesheet" type="text/css" href="css/gigiau.css?v=2601250246" />
     <meta property="og:image" content="/gigiau.png">
     <meta property="og:title" content="Gigiau" />
     <meta property="og:url" content="https://gigiau.uk/" />
@@ -245,17 +245,18 @@
                     <div class='title'><a ${link}>${show.title}</a></div>
                     <div class='subtitle'>${show.subtitle || ""}</div>
                     <div class='date'>${show.date}</div>
-                    <div class='description-container'>
+                    <div class='description-container' onclick='showDescription(event)'>
                         <div class='description-prop'></div>
-                        <div class='description' onclick="showDescription(event, ${ix})">${show.text||""}</div>
+                        <div class='description'">${(show.text||"").replace(/¬/g,"\n<br/>")}</div>
                         <div class='mask'></div>
                     </div>
                 </div>`;
         }
-        function showDescription(e, i) {
+        function showDescription(e) {
             let oldItem = document.querySelector("[class*=expand]");
             oldItem?.classList.remove("expand");
             if (oldItem != e.currentTarget) e.currentTarget.classList.add("expand");
+            e.stopPropagation();
         }
 
         class Filters {
@@ -329,7 +330,8 @@
                 let promoterKeys = Object.keys(events.promoters);
                 promoterKeys.sort((a, b) => a.localeCompare(b));
                 let menuItems = promoterKeys.map(p => `
-                <div><input type="checkbox" class='promoterFilter' ${Filters.filters.promoterExclude?.[p] !== true ? 'checked' : ''} name="${p}" id='${p}filter'/>
+                <div ${events.toDo[p]?"class='empty-promoter'":events.fromCache.includes(p)?"class='from-cache'":""}>
+                    <input type="checkbox" class='promoterFilter' ${Filters.filters.promoterExclude?.[p] !== true ? 'checked' : ''} name="${p}" id='${p}filter'/>
                     <label for='${p}filter'>${events.promoters[p]}</label></div>`).join('\n');
                 document.getElementById("promoterMenu").innerHTML =
                     `<div><div><input type="checkbox" onclick="PromoterFilters.swogglePromoters()" id="promoterSwoggle"/>

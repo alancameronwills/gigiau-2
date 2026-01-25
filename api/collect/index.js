@@ -28,6 +28,7 @@ async function collect(context) {
     let handlers = await events(context, { query: {} });
     let handlerNames = Object.keys(handlers);
     let toDo = {};
+    let fromCache = [];
     handlerNames.forEach(n => toDo[n] = true);
     let eventsLists = {};
     await Promise.all(handlerNames.map(async n => {
@@ -50,6 +51,7 @@ async function collect(context) {
                         eventsLists[n].forEach(s => s.promoter = n);
                         delete toDo[n];
                         persistentStatus(`Using cached events for ${n}. Remaining: ` + Object.keys(toDo).join(" "));
+                        fromCache.push(n);
                     } else {
                         // No cache available
                         eventsLists[n] = [];
@@ -65,6 +67,7 @@ async function collect(context) {
                 eventsLists[n].forEach(s => s.promoter = n);
                 delete toDo[n];
                 fault(`Error getting ${n}, using cache: ${e.toString()}`);
+                fromCache.push(n);
             } else {
                 fault(`Getting ${n} ${e.toString()}`);
             }
@@ -114,6 +117,7 @@ async function collect(context) {
         promoters: handlers,
         categories,
         shows: showsUnduplicated,
+        fromCache,
         toDo,
         faults,
         date: Date.now(),

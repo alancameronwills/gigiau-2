@@ -2,7 +2,7 @@ const { escapeHtml, escapeRegex } = require('../SharedCode/security.js');
 
 const DMhmformat = { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" };
 const DMYformat = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
-const DMYhmformat = { weekday: "long", day: "numeric", month: "short", year:"numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" };
+const DMYhmformat = { weekday: "long", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" };
 
 function attr(s, cls) {
     // Security: Escape regex special characters to prevent regex injection
@@ -25,14 +25,14 @@ function sl(en, cy) {
 
 function stripText(s) {
     return s.replace(/https:\/\/[-a-z0-9+_?=&#%\/.:]* */gi, " ")
-        .replace(/<\/p>|<\/div>|<\/ul>/sg, "¬¬¬")
+        .replace(/<\/p>|<\/div>|<\/li>|<br.*?>/sg, "¬¬¬")
         .replace(/<.*?>/sg, "")
-        .replace(/¬¬[¬ ]+/g, "<br/>")
-        .replace(/\n[\n\r\t ]+/, "\n")
+        .replace(/[\s\n]+/, " ")
+        .replace(/¬¬[¬ ]+/g, " ¬ ")
         .trim();
 }
 
-async function getDescriptions(r, re) {
+async function getDescriptionsX(r, re) {
     await Promise.all(r.map(async ri => {
         try {
             let eventText = await ftext(ri.url);
@@ -40,6 +40,22 @@ async function getDescriptions(r, re) {
             ri.text = stripText(description);
         } catch (e) { }
     }))
+}
+
+async function getEventDetails(r, extract) {
+    await Promise.all(r.map(async ri => {
+        try {
+            let eventPage = await ftext(ri.url);
+            extract(ri, eventPage);
+        } catch (e) { }
+    }));
+}
+
+async function getDescriptions(r, regex) {
+    await getEventDetails(r, (ri, eventPage) => {
+        let description = m(eventPage, regex);
+        ri.text = stripText(description);
+    })
 }
 
 function langSplit(s) {
@@ -162,6 +178,33 @@ let handlers = [];
 }).friendly = "Other Voices";
 
 
+(handlers["ceridwen"] = async () => {
+    let eventsPage = await ftext("https://ceridwencentre.co.uk/events-2/");
+    let article = m(eventsPage, /<div[^>]*main-content.*?(<article.*?<\/article>)/s);
+    let eventsList = article.split(/<div[^>]*mep_event_list_item/s);
+    let r = [];
+    eventsList.forEach(ev => {
+        try {
+            let ri = {};
+            ri.title = m(ev, /<h2.*?>(.*?)<\/h2>/s);
+            ri.url = m(ev, /href="(.*?)"/s);
+            ri.date = stripText(m(ev, /<span[^>]*list_date.*?>(.*?)<\/span>/s));
+            ri.dt = new Date(ri.date).valueOf();
+            ri.venue = m(ev, /<span[^>]*_location.*?>(.*?)<\/span>/s);
+            if (ri.venue.match(/ceridwen centre/i)) ri.venue = "Ceridwen Centre, Llandysul";
+            ri.image = m(ev, /data-bg-image="(.*?)"/s);
+            ri.type = "live";
+            if (ri.dt) r.push(ri);
+        } catch (e) { console.log(e.toString()); }
+    });
+    await getEventDetails(r, (ri, eventPage) => {
+        ri.image = m(eventPage, /<script[^>]*application\/ld\+json.*?>.*?"image":.*?(https:[^"']*)/s);
+        ri.text = stripText(m(eventPage, /<div[^>]*_details_content.*?>(.*?<\/div>.*?)(?:<div |<h)/s));
+    });
+    return r;
+}).friendly = "Ceridwen Centre";
+
+
 (handlers["cardicastle"] = async () => {
     let ticketPage = await ftext("https://cardigancastle.com/shop/tickets/");
     let eventsRaw = ticketPage.match(/<div\s+class="item.*?<\/div>/gs);
@@ -202,7 +245,7 @@ let handlers = [];
             let title = m(product, /<product-card-title>(.*?)</s);
             let dateString = datex(m(product, /<p>(.*?)<\/p>/s));
             return {
-                image: m(product, /<img[^>]*src="(.*?)"/s)?.replace(/\?.*/,"") || "",
+                image: m(product, /<img[^>]*src="(.*?)"/s)?.replace(/\?.*/, "") || "",
                 title: title,
                 url: "https://www.bluestonebrewing.co.uk" + m(product, /href="(.*?)"/s),
                 venue: "Bluestone Brewing",
@@ -213,7 +256,7 @@ let handlers = [];
             }
         });
         await getDescriptions(r, /<div\s+class=[^>]*-description.*?>(.*?)<\/div>/s);
-        return r.filter(r=>r.dt);
+        return r.filter(r => r.dt);
     } catch (e) { return { e: e.toString() } }
 }).friendly = "Bluestone Brewing";
 
@@ -309,7 +352,7 @@ let handlers = [];
             .map(event => {
                 return {
                     title: event.name,
-                    text: event.description,
+                    text: event.description.replace(/&lt;.*?&gt;/g, " ").replace(/\\./g, " ").trim(),
                     url: event.url,
                     category: "live",
                     date: event.startDate?.substring(0, 16).replace("T", " "),
@@ -319,31 +362,18 @@ let handlers = [];
                 }
             }
             );
-        /*
-        let eventSection = m(source, /<section[^>]+events.*?>(.*)<\/section>/s);
-        let events = eventSection.match(/<article.*?>.*?<\/article>/gs);
-        events.forEach(event => {
-            if (!event.match("event-date-end")) { // exclude membership renewal
-                let ri = {};
-                let header = m(event, /<header.*?>(.*?)<\/header>/s);
-                ri.dt = new Date(m(event, /datetime="(.*?)"/s)).valueOf() || 0;
-                ri.date = m(event, /event-date-start".*?>(.*?)</s);
-                let title = m(header, /<h3.*?>(.*?)<\/h3>/s);
-                ri.url = m(title, /href="(.*?)"/s) || "";
-                ri.title = m(title, /title="(.*?)"/s); //title.replace(/<.*?>/gs, "");
-                ri.category = "live";
-                ri.venue = "The Plas, Narberth|Y Plas, Arberth";
-                let address = m(event, /<address.*?>(.*?)<\/address>/s);
-                let venue = m(address, /venue-title.*?>(.*?)</s);
-                if (venue) ri.venue = venue;
-                // default:
-                ri.image = "https://narberthjazz.wales/wp-content/uploads/2022/11/cropped-header-new-mobile-jpg-768x221.jpg";
-                r.push(ri);
-            }
-        });
-        */
     } catch (e) { return { e: e.toString() } }
+
     // Get images from separate event pages
+    await getEventDetails(r, (ri,eventPage) => {
+            let content = m(eventPage, /<div[^>]*tribe-events-single-event-description.*?>(.*?)<\/div>/s);  
+            let img = m(content, /<img(.*?)>/s);
+            let src = m(img, /src=['"](.*?)['"]/s);
+            if (src) {
+                ri.image = src;
+            }
+    });
+    /*
     await Promise.all(r.map(async ri => {
         try {
             //console.log("event: " + ri.title);
@@ -360,6 +390,7 @@ let handlers = [];
             //console.log(e);
         }
     }));
+    */
     return r;
 }).friendly = "Narberth Jazz";
 
@@ -781,7 +812,7 @@ let ticketsolve = async (tsid, categoryMap, venueNameFilter = null) => {
                             title: showName,
                             subtitle: specials.join("; "),
                             url: url,
-                            text: m(description, /<!\[CDATA\[(.*?)\]\]/s).replace(/<.*?>/gs, " "),
+                            text: stripText(m(description, /<!\[CDATA\[(.*?)\]\]/s)),
                             category: category
                         });
                     }
@@ -1016,6 +1047,21 @@ handlers["cordyfed"] = await ticketsource("cor-dyfed-choir");
     });
     return r;
 }).friendly = "Festival Arts";
+
+function stripUrl(u) {
+    return m(u, /(https?:\/\/[-_+=.%&?#/()a-z0-9]+)/i);
+}
+
+function sanitizeEvents(r) {
+    r.forEach(ri => {
+        ri.title = stripText(ri.title);
+        ri.url = stripUrl(ri.url);
+        ri.date = stripText(ri.date);
+        ri.venue = stripText(ri.venue);
+        ri.image = stripUrl(ri.image);
+        ri.text = stripText(ri.text);
+    })
+}
 
 
 const azureHandler = async function (context, req) {

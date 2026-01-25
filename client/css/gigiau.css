@@ -179,13 +179,10 @@ a:link {
     display: flex;
     margin: 8px 0 0 0;
 }
+
 .description-prop {
     width: 1px;
     height: var(--descriptionheight);
-}
-
-.description-prop:has(+ .description:empty) {
-    display: none;
 }
 
 .description:not(:empty)::after {
@@ -203,30 +200,41 @@ a:link {
     padding-bottom: 2px;
     border: solid gray 1px;
 }
-.description:not(:empty):not(.expand)::after {
-    content:  "• • •";
+
+.description-container:not(.expand) .description:not(:empty)::after {
+    content: "• • •";
 }
-.description:not(:empty).expand::after {
-    content:  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='gray' viewBox='0 4 24 24'%3E%3Cpath d='m12.6 14.74 4.22-4.58c.43-.46.06-1.16-.6-1.16H7.78c-.66 0-1.03.7-.6 1.16l4.22 4.58c.31.34.89.34 1.2 0'/%3E%3C/svg%3E");
+
+.expand .description:not(:empty)::after {
+    content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='gray' viewBox='0 4 24 24'%3E%3Cpath d='m12.6 14.74 4.22-4.58c.43-.46.06-1.16-.6-1.16H7.78c-.66 0-1.03.7-.6 1.16l4.22 4.58c.31.34.89.34 1.2 0'/%3E%3C/svg%3E");
 }
 
 .description {
-    max-height:  var(--descriptionheight);
+    max-height: var(--descriptionheight);
     font-size: small;
     color: rgb(190, 189, 189);
     background-color: white;
+}
+
+.description-container:has(.description:empty){
+    .mask, .description-prop {
+        display:none;
+    }
 }
 
 #table.hide-descriptions .description-container {
     display: none;
 }
 
-.expand.description {
+.expand .description {
     max-height: 90%;
     position: absolute;
     border-top: black solid 1px;
     bottom: 0;
     color: black;
+    padding-bottom: 20px;
+    left: 5px;
+    right: 5px;
 }
 
 #sources {
@@ -236,6 +244,14 @@ a:link {
     background-color: azure;
     padding: 3px;
     transition: all 2s;
+}
+
+.from-cache {
+    color: blue;
+}
+
+.empty-promoter {
+    color: gray;
 }
 
 @media (max-width:600px) {
@@ -319,6 +335,7 @@ a:link {
 
 .slideout {
     position: fixed;
+    z-index: 20;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
@@ -399,6 +416,7 @@ a:link {
 
 #monthMenu {
     position: fixed;
+    z-index: 20;
     top: 40px;
     left: 2px;
     width: 90vh;
@@ -451,6 +469,7 @@ body:not(.showMenus) #monthMenu {
 
 #bottomMenu {
     position: fixed;
+    z-index: 20;
     bottom: 0;
     width: 100%;
     margin-bottom: -100%;
