@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="/gigiau.ico">
+    <title>Counter Stats</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 1200px;
+        }
+        #loading {
+            color: #666;
+            font-style: italic;
+        }
+        #error {
+            color: #c00;
+            display: none;
+        }
+        .legend-info {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Counter History</h1>
+    <div id="loading">Loading data...</div>
+    <div id="error"></div>
+    <div class="chart-container">
+        <canvas id="chart"></canvas>
+    </div>
+    <div class="legend-info" id="legendInfo"></div>
+
+    <script>
+        const API_URL = "https://0qa9ai0tq5.execute-api.eu-west-2.amazonaws.com/counter?history";
+
+        const COLORS = [
+            '#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
+            '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe',
+            '#008080', '#e6beff', '#9a6324', '#800000', '#aaffc3',
+            '#808000', '#ffd8b1', '#000075', '#808080', '#000000'
+        ];
+
+        const fieldNames = {
+            z_0: "Revisit|URL",
+            z_1: "Flyers EN",
+            z_2: "Flyers CY",
+            z_6: "Card EN",
+            z_7: "Card CY",
+            z_11: "Posters EN",
+            z_12: "Posters CY",
+            z_200: "App share"
+        };
+
+        async function loadData() {
+            const loadingEl = document.getElementById("loading");
+            const errorEl = document.getElementById("error");
+
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+
+                loadingEl.style.display = "none";
+                processAndRender(data.history || data);
+            } catch (err) {
+                loadingEl.style.display = "none";
+                errorEl.style.display = "block";
+                errorEl.textContent = `Error loading data: ${err.message}`;
+            }
+        }
+
+        function processAndRender(history) {
+            // Sort by date
+            history.sort((a, b) => Number(a.rowKey) - Number(b.rowKey));
+
+            // Exclude all before absolute start date
+            let startDate = new Date("2025-11-18").valueOf();
+            history = history.filter(entry => Number(entry.rowKey) > startDate);
+
+            // Get all numeric fields (excluding metadata)
+            const excludeFields = new Set(["rowKey", "partitionKey", "etag", "timestamp"]);
+            const allFields = new Set();
+
+            history.forEach(entry => {
+                Object.keys(entry).forEach(key => {
+                    if (!excludeFields.has(key) && typeof entry[key] === "number") {
+                        allFields.add(key);
+                    }
+                });
+            });
+
+            // Filter out fields that have been constant for the past month
+            const oneMonthAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+            const recentEntries = history.filter(e => Number(e.rowKey) >= oneMonthAgo);
+
+            const activeFields = [];
+            allFields.forEach(field => {
+                const recentValues = recentEntries
+                    .filter(e => e[field] !== undefined)
+                    .map(e => e[field]);
+
+                if (recentValues.length > 0) {
+                    const firstValue = recentValues[0];
+                    const hasChanged = recentValues.some(v => v !== firstValue);
+                    if (hasChanged) {
+                        activeFields.push(field);
+                    }
+                }
+            });
+
+            // Sort fields for consistent ordering
+            activeFields.sort();
+
+            // Prepare chart data
+            const labels = history.map(entry => {
+                const date = new Date(Number(entry.rowKey));
+                return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+            });
+
+            const datasets = activeFields.map((field, index) => ({
+                label: fieldNames[field] || field,
+                data: history.map(entry => entry[field] ?? null),
+                borderColor: COLORS[index % COLORS.length],
+                backgroundColor: COLORS[index % COLORS.length] + "20",
+                tension: 0.1,
+                fill: false,
+                spanGaps: true
+            }));
+
+            // Render chart
+            const ctx = document.getElementById("chart").getContext("2d");
+            new Chart(ctx, {
+                type: "line",
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: "index",
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: "Counter Values Over Time"
+                        },
+                        legend: {
+                            position: "top"
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: "Date"
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: "Value"
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Show info about filtered fields
+            const filteredCount = allFields.size - activeFields.length;
+            if (filteredCount > 0) {
+                document.getElementById("legendInfo").textContent =
+                    `${filteredCount} field(s) hidden (unchanged in the past month)`;
+            }
+        }
+
+        loadData();
+    </script>
+</body>
+
+</html>
