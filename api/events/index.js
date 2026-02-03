@@ -260,7 +260,7 @@ let handlers = [];
     } catch (e) { return { e: e.toString() } }
 }).friendly = "Bluestone Brewing";
 
-
+/*
 (handlers["ffm"] = async () => {
     let r = [];
     try {
@@ -286,6 +286,52 @@ let handlers = [];
             };
             r.push(ri);
         }
+    } catch (e) { r.push({ e: e.toString() }); }
+    return r;
+}).friendly = "Fishguard Festival";
+*/
+
+
+(handlers["ffm"] = async () => {
+    let r = [];
+    try {
+        const ffm = [
+            ["Fri 17 July 2026", "Welsh National Opera Orchestra", "St Davids Cathedral", "7:30 £30-£20/free", "", "https://static.wixstatic.com/media/fe1a62_be8d941cbda041ef814b84d1b4525a2d~mv2.jpg/v1/fill/w_631%2Ch_400%2Cal_c%2Cq_80%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/Programme%20WNO_edited.jpg", "https://www.fishguardmusicfestival.com/wno"],
+            ["Sat 18 July 2026", "She'Koyokh", "Letterston Memorial Hall", "7:30 £18/free", "Klezmer and traditional music from the Balkans, Turkey and beyond", "https://static.wixstatic.com/media/fe1a62_9fc26fbf9db9421c957bef3ac113c1e5~mv2.jpg/v1/crop/x_0%2Cy_1181%2Cw_2002%2Ch_1520/fill/w_493%2Ch_377%2Cal_c%2Cq_80%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/She'Koyokh%207%20(credit%20Savannah%20Photograph.jpg", "https://www.fishguardmusicfestival.com/shekoyokh"],
+            ["Sun 19 July 2026", "She'Koyokh on the Quay", "Lower Town Quay", "8:30am Free", "Early morning performance beside Fishguard's old harbour", "https://static.wixstatic.com/media/fe1a62_53003af8024d4f859dbd2bc288490cdc~mv2.jpg/v1/crop/x_588%2Cy_0%2Cw_4571%2Ch_1144/fill/w_715%2Ch_179%2Cal_c%2Cq_80%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/IMG_7360%20-%20Version%202_JPG.jpg", "https://www.fishguardmusicfestival.com/shekoyokh-on-the-quay"],
+            ["Sun 19 July 2026", "Morgan Szymanski (guitar)", "Mathry Church", "2pm £18/free", "Guitar soloist", "https://static.wixstatic.com/media/fe1a62_e0b78d779b2c4cc990dc16e6bb5a2d2d~mv2.jpg/v1/fill/w_1356%2Ch_775%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/fe1a62_e0b78d779b2c4cc990dc16e6bb5a2d2d~mv2.jpg", "https://www.fishguardmusicfestival.com/morgan-szymanski"],
+            ["Mon 20 July 2026", "Sacconi Quartet and Steffan Morris (cello)", "Bethel Church - Fishguard", "7:30 £20/free", "Rachmaninov, Arensky, Schubert", "https://static.wixstatic.com/media/fe1a62_aadab5f5c1d8423496f4646298682311~mv2.jpg/v1/crop/x_1265%2Cy_0%2Cw_3745%2Ch_2400/fill/w_983%2Ch_630%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/Sacconi%20%2B%20Steffan%202.jpg", "https://www.fishguardmusicfestival.com/sacconi-quintet"],
+            ["Tue 21 July 2026", "Sacconi Quartet", "St Mary's Church - Haverfordwest", "7:30 £20/free", "Mozart, Waley-Cohen, Smetana", "https://static.wixstatic.com/media/fe1a62_bd31eaf1eecf4df3898d03b1dcbfee52~mv2.jpg/v1/fill/w_1471%2Ch_784%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/Programme%20Sacconi_edited.jpg", "https://www.fishguardmusicfestival.com/sacconi-quartet"],
+            ["Wed 22 July 2026", "Fenella Humphreys (violin),  Cara Berridge (cello)", "Bethel Church - Fishguard", "7:30 £20/free", "Bártok, Godard, Bach, Sibelius, Ravel", "https://static.wixstatic.com/media/fe1a62_6f9bef4c784e44199abfd463f4daaa03~mv2.jpg/v1/fill/w_987%2Ch_626%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/fe1a62_6f9bef4c784e44199abfd463f4daaa03~mv2.jpg", "https://www.fishguardmusicfestival.com/humphreys-berridge"],
+            ["Thu 23 July 2026", "'A Welsh Tapestry' in words and music", "Theatr Gwaun - Fishguard", "7:30 £18/free", "Music and Poetry", "", "https://www.fishguardmusicfestival.com/rwcmd"],
+            ["Fri 24 July 2026", "Film: 'Fires of the Moon'", "Theatr Gwaun - Fishguard", "7pm £7/free", "Filmed entirely in Wales, and based on scenes from Caradog Pritchard's Welsh language novel 'Un Nos Ola Leuad', 'Fires of the Moon' combines hauntingly beautiful music with exquisite cinematic story-telling. It is a unique blend of opera and cinema with music by renowned composer Gareth Glyn, played by the Orchestra of Welsh National Opera.", "https://static.wixstatic.com/media/fe1a62_40febba4cc054e44b20300e30182d3bd~mv2.webp/v1/fill/w_1426%2Ch_787%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/Fires-of-the-Moon-scaled_jpg.webp", "https://www.fishguardmusicfestival.com/fires-of-the-moon"],
+            ["Fri 24 July 2026", "La Traviata", "Neuadd y Dderwen - Rhosygilwen", "", "", "", ""],
+            ["Sat 25 July 2026", "Caritas Consort", "St Mary's Church - Haverfordwest", "7:30 £10/free", "Proceeds to Paul Sartori Foundation.", "https://static.wixstatic.com/media/fe1a62_408a3f43c72b46a4aec482cdb246df7c~mv2.jpg/v1/fill/w_1036%2Ch_592%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/Caritas%20website.jpg", "https://www.fishguardmusicfestival.com/caritas"],
+            ["Sat 25 July 2026", "La Traviata", "Neuadd y Dderwen - Rhosygilwen", "", "", "", ""],
+            ["Sun 26 July 2026", "The O'Neills in Conversation", "Twr y Felin - St Davids", "2pm £15/free", "Dennis, Patricia and Doreen O'Neill", "https://static.wixstatic.com/media/fe1a62_e222fbc093b9411c9ee8bfaa831371da~mv2.jpg/v1/fill/w_1076%2Ch_614%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/O'Neills.jpg", "https://www.fishguardmusicfestival.com/dennis-oneill"],
+            ["Sun 26 July 2026", "La Traviata", "Neuadd y Dderwen - Rhosygilwen", "", "", "", ""],
+            ["Sun 26 July 2026", "Young Music Makers of Dyfed", "Newport Memorial Hall", "6pm £10/free", "", "https://static.wixstatic.com/media/fe1a62_46c9237c05694453948dbb9bc31db84c~mv2.jpg/v1/fill/w_1034%2Ch_791%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/fe1a62_46c9237c05694453948dbb9bc31db84c~mv2.jpg", "https://www.fishguardmusicfestival.com/ymmd"],
+            ["Mon 27 July 2026", "Mererid Hopwood", "St Mary's Church - Fishguard", "2pm £15/free", "", "https://static.wixstatic.com/media/fe1a62_6f7918292fae415d926a83665cb829ed~mv2.jpg/v1/fill/w_1034%2Ch_798%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/fe1a62_6f7918292fae415d926a83665cb829ed~mv2.jpg", "https://www.fishguardmusicfestival.com/mererid-hopwood"],
+            ["Mon 27 July 2026", "Pedair", "Theatr Gwaun - Fishguard", "7:30 £20/free", "Traditional material with new arrangements on harps, guitars, piano and accordion", "https://static.wixstatic.com/media/fe1a62_7e356e77b5e84b3389e1768e1ee02cb2~mv2.jpg/v1/fill/w_1426%2Ch_787%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/Website%20Pedair_edited.jpg", "https://www.fishguardmusicfestival.com/pedair"],
+            ["Tue 28 July 2026", "Saints and Stones Tour", "Fishguard Bus Station", "10am-2pm £20/free", "Rev. Richard Davies leads a tour of four of North Pembrokeshire’s many fascinating churches and chapels. Richard will introduce you to its history as a religious site and its place in the story of the area. Musicians will perform as you explore the interiors of the buildings and their surroundings.", "https://static.wixstatic.com/media/fe1a62_e3a77117795541e9a6681a0e650c1c0e~mv2.jpg/v1/fill/w_1462%2Ch_784%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/Website%20Saints%20and%20Stones.jpg", "https://www.fishguardmusicfestival.com/saints-and-stones"],
+            ["Tue 28 July 2026", "Catrin Finch (harp)", "Bethel Church - Fishguard", "7:30 £20/free", "The most gifted classical harp virtuoso of her generation.", "https://static.wixstatic.com/media/fe1a62_42099a4aa8224e62abaeb1c984e87439~mv2.jpeg/v1/fill/w_1082%2Ch_800%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/fe1a62_42099a4aa8224e62abaeb1c984e87439~mv2.jpeg", "https://www.fishguardmusicfestival.com/catrin-finch"],
+            ["Wed 29 July 2026​", "WNO Chamber Ensemble", "Neuadd y Dderwen - Rhosygilwen", "7:30 £20/free", "", "", ""],
+            ["Thu 30 July 2026", "London Tango Quintet", "Neuadd y Dderwen - Rhosygilwen", "7:30pm £20/free", "A unique group of five internationally acclaimed musicians performing tango music at the highest level.  The result is an energetic, inspiring and thoroughly enjoyable concert of relaxed virtuosity.​", "", ""],
+            ["Fri 30 July 2026", "National Youth Orchestra of Wales", "St Davids Cathedral", "7:30 £20-£12/free", "Rimksy-Korsakov, Respighi, Mussorgsky", "https://static.wixstatic.com/media/fe1a62_8af2127aff0f48a1ad4891c7fe55b514~mv2.jpg/v1/fill/w_1373%2Ch_782%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/fe1a62_8af2127aff0f48a1ad4891c7fe55b514~mv2.jpg", "https://www.fishguardmusicfestival.com/nyow"],
+        ];
+        ffm.forEach(s => {
+            let ri = {
+                date: s[0],
+                dt : new Date(s[0]).valueOf(),
+                title : s[1],
+                venue: s[2],
+                subtitle: s[3],
+                text: s[4],
+                image: s[5],
+                url: s[6]
+            };
+            if (ri.dt) r.push(ri);
+        })
     } catch (e) { r.push({ e: e.toString() }); }
     return r;
 }).friendly = "Fishguard Festival";
@@ -365,13 +411,13 @@ let handlers = [];
     } catch (e) { return { e: e.toString() } }
 
     // Get images from separate event pages
-    await getEventDetails(r, (ri,eventPage) => {
-            let content = m(eventPage, /<div[^>]*tribe-events-single-event-description.*?>(.*?)<\/div>/s);  
-            let img = m(content, /<img(.*?)>/s);
-            let src = m(img, /src=['"](.*?)['"]/s);
-            if (src) {
-                ri.image = src;
-            }
+    await getEventDetails(r, (ri, eventPage) => {
+        let content = m(eventPage, /<div[^>]*tribe-events-single-event-description.*?>(.*?)<\/div>/s);
+        let img = m(content, /<img(.*?)>/s);
+        let src = m(img, /src=['"](.*?)['"]/s);
+        if (src) {
+            ri.image = src;
+        }
     });
     /*
     await Promise.all(r.map(async ri => {
