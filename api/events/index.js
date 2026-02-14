@@ -27,8 +27,8 @@ function stripText(s) {
     return s.replace(/https:\/\/[-a-z0-9+_?=&#%\/.:]* */gi, " ")
         .replace(/<\/p>|<\/div>|<\/li>|<br.*?>/sg, "¬¬¬")
         .replace(/<.*?>/sg, "")
-        .replace(/[\s\n]+/, " ")
-        .replace(/¬¬[¬ ]+/g, " ¬ ")
+        .replace(/[\s\n]+/sg, " ")
+        .replace(/¬¬[¬ ]+/sg, " ¬ ")
         .trim();
 }
 
@@ -573,7 +573,7 @@ let handlers = [];
         let ri = {};
         ri.image = m(show, /src=['"](.*?)['"]/s);
         ri.url = "https://www.smallworld.org.uk" + m(show, /href=['"](.*?)['"]/s);
-        ri.title = m(show, /<h1.*?>(.*?)<\/h1>/s).replace(/<.*?>/s, "");
+        ri.title = m(show, /<h1.*?>(.*?)<\/h1>/s).replace(/<.*?>/gs, "");
         ri.venue = sl("SmallWorld", "Byd Bach");
         ri.text = "";
         //ri.date = m(show, /event-time[^>]+datetime=['"](.*?)['"](?:>[0-9:]+)?)/s).replace(/['"]>/, " ");
@@ -585,6 +585,14 @@ let handlers = [];
             r.push(ri);
         }
     })
+    
+    await getEventDetails(r, (ri, eventPage) => {
+        let description = m(eventPage,  /class="eventitem-column-content".*?>(.*?)<\/div>/s);
+        let title = new RegExp(`(?:^|¬)[ ¬]*${ri.title} *¬`, "i");
+        ri.text = stripText(description).replace(title, "¬").replace(/^[ ¬]+/, "");
+        ri.category = ri.text.match(/workshop/i) ? "workshop" : "live";
+    });
+
     return r;
 }).friendly = "Small World";
 
