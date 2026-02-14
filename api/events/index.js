@@ -945,7 +945,7 @@ let ticketsource = async (tsid) => {
         const eventList = JSON.parse(strip);
         if (eventList && eventList.length > 0) {
             r = eventList.map(event => {
-                let dt = new Date(event['date-utc']);
+                let dt = new Date(event['date-utc'] || event['date']);
                 return {
                     title: event.title,
                     image: event.image,

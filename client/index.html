@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-gb">
-<!-- 2026-01-25 02:46-->
+<!-- 2026-02-14 16:42-->
 
 <head>
     <meta charset="UTF-8">
@@ -236,12 +236,13 @@
                     ${sl(dEn, dCy)}
                     </div>`;
             };
-            const link = show.url ? `href='${show.url}' target='_top'` : show.imagesource ? `onclick='showBigPic("${show.imagesource}")'` : "";
+            const expandPic = show.imagesource ? `onclick='showBigPic("${show.imagesource}", "${show.url}")'` : "";
+            const link = show.url ? `href='${show.url}' target='_top'` : expandPic;
 
             return dateHead
                 + `<div class='show ${ifHidden} ${show.category || ""} ${show.promoter}' id='show-${ix}' dt='${show.dt}'>
                     <div class='venue' onclick='venueFilter("${show.promoter}")'>${show.venue}</div>
-                    <div class='image'><a ${link}><img src='${cacheImage}'/></a></div>
+                    <div class='image'><img ${expandPic} src='${cacheImage}'/></div>
                     <div class='title'><a ${link}>${show.title}</a></div>
                     <div class='subtitle'>${show.subtitle || ""}</div>
                     <div class='date'>${show.date}</div>
@@ -434,8 +435,8 @@
             }
         }
 
-        function showBigPic(src) {
-            document.querySelector("#big-pic-page").innerHTML = `<img src='${src}' style='margin:auto' onclick='hidePageOver()'/>`;
+        function showBigPic(src, link) {
+            document.querySelector("#big-pic-page").innerHTML = `<img src='${src}' style='margin:auto' onclick='hidePageOver()${link?`;location.href="${link}"`:""};'/>`;
             showPageOver("#big-pic-page");
         }
 
