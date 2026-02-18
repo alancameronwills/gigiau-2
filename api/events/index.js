@@ -322,8 +322,8 @@ let handlers = [];
         ffm.forEach(s => {
             let ri = {
                 date: s[0],
-                dt : new Date(s[0]).valueOf(),
-                title : s[1],
+                dt: new Date(s[0]).valueOf(),
+                title: s[1],
                 venue: s[2],
                 subtitle: s[3],
                 text: s[4],
@@ -585,9 +585,9 @@ let handlers = [];
             r.push(ri);
         }
     })
-    
+
     await getEventDetails(r, (ri, eventPage) => {
-        let description = m(eventPage,  /class="eventitem-column-content".*?>(.*?)<\/div>/s);
+        let description = m(eventPage, /class="eventitem-column-content".*?>(.*?)<\/div>/s);
         let title = new RegExp(`(?:^|¬)[ ¬]*${ri.title} *¬`, "i");
         ri.text = stripText(description).replace(title, "¬").replace(/^[ ¬]+/, "");
         ri.category = ri.text.match(/workshop/i) ? "workshop" : "live";
@@ -798,6 +798,17 @@ let handlers = [];
                 r.push(ri);
             }
         } catch (e) { console.log(e) }
+    });
+    await getEventDetails(r, (ri, eventPage) => {
+        let img = m(eventPage, /<article[^>]+ node-event.*? field-type-image.*?<img [^>]*?src=["']([^"']*)/s);
+        if (img) {
+            if (img.indexOf('/') == 0) {
+                ri.image = "https://www.stdavidscathedral.org.uk" + img;
+            } else {
+                ri.image = img;
+            }
+        }
+        ri.text = stripText(m(eventPage, /<article[^>]+ node-event.*? field-name-body.*?>(.*?)<\/article>/s));
     });
     return r;
 }).friendly = "St Davids Cathedral";
