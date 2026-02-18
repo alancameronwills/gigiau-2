@@ -306,12 +306,6 @@ a:link {
     width: 40vw;
 }
 
-
-#filters {
-    margin-bottom: 20px;
-}
-
-
 .table.no-film>.show.film {
     display: none;
 }
@@ -350,34 +344,47 @@ a:link {
 }
 
 .page::after,
-.slideout::after {
-    content: "<";
-    background-color: blue;
+.slideout-content::after {
+    content: "◀";
     position: absolute;
-    font-size: large;
-    bottom: max(15vh, 40px);
-    right: max(15vw, 40px);
+    bottom: 0;
+    right: 0;
+    height: 1.5em;
+    width: 1.5em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: blue;
+    font-size: 0.8em;
+    padding: 0 0 2px 0;
     border-radius: 4px;
     color: white;
-    padding: 0 4px;
     border: 1px solid blue;
-    transform: rotate(90deg);
+}
+
+.slideout-content::after {
+    transform: rotate(90deg) translate(50%, -50%);
+}
+
+.page::after {
+    transform: rotate(90deg) translate(-100%, 150%);
 }
 
 .slideout-content {
     background-color: rgba(192, 192, 192, 0.92);
     border-radius: 6px;
     padding: 6px;
-    margin-top: -100vh;
-    margin: auto;
+    position: relative;
     display: flex;
     flex-wrap: wrap;
     justify-content: space-around;
     gap: 20px;
+    align-self: center;
     align-items: center;
     overflow-y: auto;
     max-height: 100%;
     max-width: 80vw;
+    overflow: visible;
 }
 
 .slideout.visible {
@@ -390,6 +397,7 @@ a:link {
 
 .slideout-content>div {
     overflow-y: auto;
+    margin: 10px;
 }
 
 #promoterMenu {
@@ -493,4 +501,27 @@ body.showMenus #bottomMenu {
     border-width: 1px;
     border-color: dodgerblue;
     font: var(--menufont);
+}
+#actionMenu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+#promoterMenu {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: rgb(190, 189, 189);
+    width: fit-content;
+    height: fit-content;
+    max-height: 90vh;
+    max-width: 90vw;
+    overflow: auto;
+    padding: 20px;
+}
+#sources-page {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }

@@ -114,7 +114,7 @@
         function setUpInstaller() {
             if (screen.height > 450 && screen.width > 450) return;
             const triedInstaller = Number(localStorage.triedInstaller || 0);
-            if (triedInstaller > 4) return;
+            //if (triedInstaller > 4) return;
             document.querySelector("#installButton").classList.remove("hide");
             document.querySelector("#upfrontInstallButton").classList.remove("hide");
         }
@@ -248,7 +248,7 @@
                     <div class='date'>${show.date}</div>
                     <div class='description-container' onclick='showDescription(event)'>
                         <div class='description-prop'></div>
-                        <div class='description'">${(show.text||"").replace(/¬/g,"\n<br/>")}</div>
+                        <div class='description'">${(show.text || "").replace(/¬/g, "\n<br/>")}</div>
                         <div class='mask'></div>
                     </div>
                 </div>`;
@@ -331,7 +331,7 @@
                 let promoterKeys = Object.keys(events.promoters);
                 promoterKeys.sort((a, b) => a.localeCompare(b));
                 let menuItems = promoterKeys.map(p => `
-                <div ${events.toDo[p]?"class='empty-promoter'":events.fromCache.includes(p)?"class='from-cache'":""}>
+                <div ${events.toDo[p] ? "class='empty-promoter'" : events.fromCache.includes(p) ? "class='from-cache'" : ""}>
                     <input type="checkbox" class='promoterFilter' ${Filters.filters.promoterExclude?.[p] !== true ? 'checked' : ''} name="${p}" id='${p}filter'/>
                     <label for='${p}filter'>${events.promoters[p]}</label></div>`).join('\n');
                 document.getElementById("promoterMenu").innerHTML =
@@ -380,7 +380,8 @@
                     film: sl("films", "ffilmiau"),
                     quiz: sl("quizzes", "cwisiau"),
                     broadcast: sl("broadcast", "darllediad"),
-                    live: sl("live", "byw")
+                    live: sl("live", "byw"),
+                    workshop: sl("workshops", "gweithdai")
                 };
                 let filterHtml = [];
                 Object.keys(filterSet).forEach(k => {
@@ -436,10 +437,13 @@
         }
 
         function showBigPic(src, link) {
-            document.querySelector("#big-pic-page").innerHTML = `<img src='${src}' style='margin:auto' onclick='hidePageOver()${link?`;location.href="${link}"`:""};'/>`;
+            document.querySelector("#big-pic-page").innerHTML = `<img src='${src}' style='margin:auto' onclick='hidePageOver()${link ? `;location.href="${link}"` : ""};'/>`;
             showPageOver("#big-pic-page");
         }
 
+        function sources() {
+            showPageOver("#sources-page");
+        }
         function share() {
             showPageOver("#share-page");
         }
@@ -678,8 +682,26 @@
     </div>
     <div class="slideout" onclick="PromoterFilters.toggleMenu()">
         <div class="slideout-content">
+            <div id="actionMenu">
+                <style>
+                    @media (min-width:450px) and (min-height:450px) {
+                        #installButton {
+                            display: none;
+                        }
+                    }
+
+                    .installButton.hide {
+                        display: none;
+                    }
+                </style>
+                <button onclick="toggleIaith()"><span class="en">Cymraeg</span><span class="cy">English</span></button>
+                <button onclick="about()"><span class="en">About</span><span class="cy">Am hyn</span></button>
+                <button onclick="sources()"><span class="en">Sources</span><span class="cy">Ffynonellau</span></button>
+                <button onclick="share()"><span class="en">Share</span><span class="cy">Rhannu</span></button>
+                <button id="installButton" class="installButton hide" onclick="installer()"><span
+                        class="en">Install</span><span class="cy">Gosod</span></button>
+            </div>
             <div id="filters"></div>
-            <div id="promoterMenu"></div>
         </div>
     </div>
     <div id="menu" onclick="PromoterFilters.toggleMenu(); TextFilter.toggle(false);">
@@ -689,22 +711,6 @@
     </div>
     <div>
         <div id="bottomMenu" onclick="PromoterFilters.toggleMenu()">
-            <style>
-                @media (min-width:450px) and (min-height:450px) {
-                    #installButton {
-                        display: none;
-                    }
-                }
-
-                .installButton.hide {
-                    display: none;
-                }
-            </style>
-            <button id="installButton" class="installButton hide" onclick="installer()"><span
-                    class="en">Install</span><span class="cy">Gosod</span></button>
-            <button onclick="share()"><span class="en">Share</span><span class="cy">Rhannu</span></button>
-            <button onclick="about()"><span class="en">About</span><span class="cy">Am hyn</span></button>
-            <button onclick="toggleIaith()"><span class="en">Cymraeg</span><span class="cy">English</span></button>
         </div>
         <div id="monthMenu">
 
@@ -764,7 +770,7 @@
             }
 
             .page>div {
-                align-self: center;
+                /*align-self: center;*/
                 justify-self: center;
             }
 
@@ -793,6 +799,11 @@
                     background: darkblue;
                     color: white;
                     padding: 20px;
+                }
+
+                p,
+                center {
+                    color: white;
                 }
 
                 ul {
@@ -825,26 +836,43 @@
         <div id="big-pic-page" class="page" onclick="hidePageOver()"></div>
         <div id="install-android-page" class="page" onclick="hidePageOver()">
             <div>
-                <h2>Save Gigiau as an app on your phone:</h2>
+                <h2 class="en">Save Gigiau as an app on your phone:</h2>
+                <h2 class="cy">Cadw Gigiau fel ap ar dy ffôn:</h2>
+                <center class="en"><i><small>So that you can easily open it again</small></i></center>
+                <center class="cy"><i><small>Fel y gallwch ei agor eto'n hawdd</small></i></center>
                 <ul>
                     <li>
 
-                        If yours is an <b>Android</b> phone, tap the three dots at top right.
+                        <span class="en">If yours is an <b>Android</b> phone, tap the three dots at top right.</span>
+                        <span class="cy">Os yw'r ffôn hwn yn <b>Android</b>, tapiwch y tri dot ar y top dde.</span>
                         <img src="threedots.jpg" />
 
                     </li>
                     <li>
-                        If it's an <b>iPhone</b>, look at the the bottom of the screen and tap the box with the arrow.
+                        <span class="cy">Os yw'n <b>iPhone</b>, edrych ar waelod y sgrîn a thapio'r blwch gyda'r
+                            saeth.</span>
+                        <span class="en">If it's an <b>iPhone</b>, look at the the bottom of the screen and tap the box
+                            with the arrow.</span>
                         <img src="iphone-export.png" />
                         <br />
-                        Then scroll the options that appear.
+                        <span class="en">Then scroll the options that appear.</span>
+                        <span class="cy">Yna sgroliwch yr opsiynau sy'n ymddangos.</span>
                         <br />
                     </li>
                     <li>
                         Tap <b>Add to Home Screen</b>
                     </li>
                 </ul>
+                <center>
+                    <span class="en">There are many variations, so if you can't find those buttons on your phone, search
+                        around a bit.</span>
+                    <span class="cy">Mae nifer o amrywiadau, felly os na allwch ddod o hyd i'r botymau hynny ar eich
+                        ffôn, chwiliwch ychydig o gwmpas.</span>
+                </center>
             </div>
+        </div>
+        <div id="sources-page" class="page" onclick="hidePageOver()">
+            <div id="promoterMenu"></div>
         </div>
         <div id="share-page" class="page" onclick="hidePageOver()">
             <div style="grid-column:2;grid-row:1;">
