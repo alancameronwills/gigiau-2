@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en-gb">
-<!-- 2026-02-14 16:42-->
+<!-- 2026-02-19 01-28-->
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/x-icon" href="gigiau.ico">
     <link rel="apple-touch-icon" href="gigiau-fav.png">
-    <link rel="stylesheet" type="text/css" href="css/gigiau.css?v=2601250246" />
+    <link rel="stylesheet" type="text/css" href="css/gigiau.css?v=2602190128" />
     <meta property="og:image" content="/gigiau.png">
     <meta property="og:title" content="Gigiau" />
     <meta property="og:url" content="https://gigiau.uk/" />
@@ -101,7 +101,43 @@
             // Refresh at intervals. Show edition date.
             setTimeout(() => location.reload(), 1000 * 60 * 60 * 6);
             document.getElementById("date").innerText = "" + new Date(events.date).toISOString() + " " + (events.platform || "");
+
+            if (location.search.indexOf("demo") >= 0) {
+                setTimeout(() => runDemo(), 2000);
+            }
         }
+
+        async function runDemo() {
+            localStorage.seenDisclaimer = 1; // Suppress disclaimer popup
+            setInterval(() => demoStep(), 2000);
+            requestAnimationFrame(demoMotor);
+            document.body.classList.add("demo");
+        }
+
+        var demoSpeed = 0;
+        var demoAnimationCount = 0;
+        function demoMotor() {
+            demoAnimationCount++;
+            if (demoSpeed != 0) {
+                scrollBy(0, demoSpeed);
+            }
+            requestAnimationFrame(demoMotor);
+        }
+
+        var demoCounter = 0;
+        async function demoStep() {
+            demoCounter++;
+            if (demoCounter % 20 == 0) {
+                demoSpeed = 0;
+                scrollTo({ top: 0, behavior: "smooth" });
+            } else
+                if (demoCounter % 13 < 2) {
+                    demoSpeed = -3;
+                } else {
+                    demoSpeed = 3;
+                }
+        }
+
 
         function fixSlideOutScroll() {
             let slideout = document.querySelector(".slideout-content");
@@ -124,13 +160,14 @@
             window.gigiauScroll = window.addEventListener("scroll", e => {
                 if (!window.gigiauDisclaimerTimer) {
                     window.gigiauDisclaimerTimer = setTimeout(() => {
+                        if (localStorage.seenDisclaimer) return;
                         hidePageOver();
                         showPageOver("#disclaimer");
+                        localStorage.seenDisclaimer = 1;
                     }, 5000);
                 }
                 window.removeEventListener("scroll", window.gigiauScroll);
             })
-            localStorage.seenDisclaimer = 1;
         }
 
         function assignIds() {
@@ -307,6 +344,16 @@
                 if (showing) body.classList.add("showMenus");
                 else body.classList.remove("showMenus");
                 if (!showing) {
+                    PromoterFilters.updateFilter();
+                    return false;
+                } else {
+                    PromoterFilters.#previousSelection = PromoterFilters.selections();
+                    tidyHistory();
+                    return true;
+                }
+            }
+
+            static updateFilter() {
                     const trueKeys = o => Object.keys(o).filter(k => o[k]);
                     const newSelection = trueKeys(PromoterFilters.selections());
                     if (newSelection.length != trueKeys(PromoterFilters.#previousSelection)
@@ -314,12 +361,6 @@
                         PromoterFilters.save();
                     }
                     pushHistory({ "showPromoterMenu": true }, "./#promoter");
-                    return false;
-                } else {
-                    PromoterFilters.#previousSelection = PromoterFilters.selections();
-                    tidyHistory();
-                    return true;
-                }
             }
 
             static isPromoterSelected(p) {
@@ -466,6 +507,7 @@
                 if (el.classList.contains("visible")) thereWasOne = true;
                 el.classList.remove("visible");
             });
+            PromoterFilters.updateFilter();
             return thereWasOne;
         }
 
@@ -821,10 +863,25 @@
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
+                align-items: center;
             }
 
             #disclaimer {
                 padding-bottom: 10vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+
+                div {
+                    max-width: 80vw;
+                    width: 20rem;
+                    border: red 1px solid;
+                    padding: 10px;
+                }
+                button {
+                    float: inline-end;
+                }
             }
 
             @media (width>450px) and (height>450px) {
@@ -889,26 +946,28 @@
             </div>
         </div>
         <div id="disclaimer" class="page" onclick="hidePageOver()">
-            <ul class="en">
-                <li><b>Check before you go</b><br />
-                    We can't guarantee the accuracy of all this stuff - we just collect it
-                </li>
-                <li class="phoneOnly"><b>Please don't read Gigiau while moving about</b><br />
-                    We wouldn't want to cause an accident
-                </li>
-            </ul>
-            <ul class="cy">
-                <li><b>Gwiriwch cyn i chi fynd</b><br />
-                    Ni allwn warantu cywirdeb yr holl bethau hyn - rydym yn eu casglu yn unig.
-                </li>
-                <li class="phoneOnly"><b>Peidiwch â darllen Gigiau wrth symud o gwmpas</b><br />
-                    Ni fyddem yn ei eisiau i achosi damwain
-                </li>
-            </ul>
-            <button onclick="setTimeout(()=>showPageOver('#about-page'),200)">
-                <span class="en">more...</span>
-                <span class="cy">mwy...</span>
-            </button>
+            <div>
+                <ul class="en">
+                    <li><b>Check before you go</b><br />
+                        We can't guarantee the accuracy of all this stuff - we just collect it
+                    </li>
+                    <li class="phoneOnly"><b>Please don't read Gigiau while moving about</b><br />
+                        We wouldn't want to cause an accident
+                    </li>
+                </ul>
+                <ul class="cy">
+                    <li><b>Gwiriwch cyn i chi fynd</b><br />
+                        Ni allwn warantu cywirdeb yr holl bethau hyn - rydym yn eu casglu yn unig.
+                    </li>
+                    <li class="phoneOnly"><b>Peidiwch â darllen Gigiau wrth symud o gwmpas</b><br />
+                        Ni fyddem yn ei eisiau i achosi damwain
+                    </li>
+                </ul>
+                <button onclick="setTimeout(()=>showPageOver('#about-page'),200)">
+                    <span class="en">more about that...</span>
+                    <span class="cy">mwy am hynny...</span>
+                </button>
+            </div>
         </div>
         <div id="about-page" class="page" onclick="hidePageOver()">
             <div class="head"><img src="gigiau.png" /></div>
@@ -942,6 +1001,16 @@
             </div>
         </div>
 
+    </div>
+    <div id="demoSplash" style="display:none">
+        <div>
+            <h1>Know what's happening?</h1>
+            <p class="demoArrow">Get Gigiau on your phone</p>
+            <p><small><i>No login, no cookies. Just what's on in North Pembs and Cardigan</i></small></p>
+        </div>
+        <div>
+            <img src="qr-share.png?v=200" />
+        </div>
     </div>
 
 </body>
