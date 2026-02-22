@@ -213,7 +213,7 @@ let handlers = [];
         try {
             let date = m(ev, /<p>(.*?)<\/p>/s).
                 replace(/([0-9])st|nd|rd|th/, "$1").
-                replace(/\sat\s/, " 2026 ").
+                replace(/\sat\s/, " ").
                 replace(/-.*/, "");
             let dt = new Date(date).valueOf();
             let ri = {
@@ -990,8 +990,8 @@ let gigio = async (source, defaultVenue = "", defaultURL = "") => {
         const json = m(response, /<pre id='gigiau'.*?>(.*?)<\/pre>/s);
         const events = JSON.parse(json);
         r = events.map(event => {
-            let dateRange = new Date(event.meta.dtstart).toLocaleString("en-GB", DMYformat);
-            if (event.meta.dtstart != event.meta.dtend) {
+            let dateRange = new Date(event.meta.dtstart).toLocaleString("en-GB", DMYhmformat).replace(", 00:00", "").replace(", 01:00", "");
+            if (event.meta.dtstart.substring(0,10) != event.meta.dtend.substring(0,10)) {
                 dateRange += " - ";
                 dateRange += new Date(event.meta.dtend).toLocaleString("en-GB", DMYformat);
             }
