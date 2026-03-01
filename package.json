@@ -20,11 +20,15 @@
     "info": "serverless info",
     "offline": "serverless offline"
   },
+  "engines": {
+    "node": ">=22"
+  },
+  "overrides": {
+    "fast-xml-parser": ">=5.3.8"
+  },
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.650.0",
     "@aws-sdk/client-s3": "^3.650.0",
-    "cookie": "^0.6.0",
-    "cross-fetch": "^4.1.0",
     "dotenv": "^17.2.3",
     "html-dom-parser": "^5.0.13",
     "http": "^0.0.1-security",

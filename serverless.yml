@@ -2,7 +2,7 @@ service: gigsmash
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs22.x
   region: eu-west-2  # London - closest to Wales
   stage: ${opt:stage, 'dev'}
   timeout: 30  # Default timeout (seconds)
