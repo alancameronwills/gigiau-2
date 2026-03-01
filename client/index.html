@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-gb">
-<!-- 2026-02-19 01-28-->
+<!-- 2026-03-01 17:42-->
 
 <head>
     <meta charset="UTF-8">
@@ -11,7 +11,7 @@
     <meta property="og:image" content="/gigiau.png">
     <meta property="og:title" content="Gigiau" />
     <meta property="og:url" content="https://gigiau.uk/" />
-    <meta property="og:description" content="Events and shows - What's On around North Pembrokshire and Cardigan" />
+    <meta property="og:description" content="Events and shows - What's On around North Pembrokeshire and Cardigan" />
     <title>Gigiau - Shows in North Pembrokeshire</title>
     <script>
         const monthsEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -372,7 +372,7 @@
                 let promoterKeys = Object.keys(events.promoters);
                 promoterKeys.sort((a, b) => a.localeCompare(b));
                 let menuItems = promoterKeys.map(p => `
-                <div ${events.toDo[p] ? "class='empty-promoter'" : events.fromCache.includes(p) ? "class='from-cache'" : ""}>
+                <div ${events.toDo[p] ? "class='empty-promoter'" : events.fromCache?.includes(p) ? "class='from-cache'" : ""}>
                     <input type="checkbox" class='promoterFilter' ${Filters.filters.promoterExclude?.[p] !== true ? 'checked' : ''} name="${p}" id='${p}filter'/>
                     <label for='${p}filter'>${events.promoters[p]}</label></div>`).join('\n');
                 document.getElementById("promoterMenu").innerHTML =
