@@ -1074,9 +1074,11 @@ handlers["cordyfed"] = await ticketsource("cor-dyfed-choir");
         if (v.indexOf("<script") == 0) {
             let jsonMatch = v.match(/\{.*\}/s)[0];
             let jso = JSON.parse(jsonMatch);
-            let date = new Date(jso.startDate);
+            // Cope with BST bug in Rhosygilwen 
+            let date = new Date(jso.startDate.replace("+01:","+02:"));
+            let dateString = date.toLocaleString("en-GB", DMYhmformat);
             r.push({
-                date: date.toLocaleString("en-GB", DMYhmformat),
+                date: dateString,
                 dt: date.valueOf(),
                 venue: "Rhosygilwen",
                 price: jso.offers?.price,
