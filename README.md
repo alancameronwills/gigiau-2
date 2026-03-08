@@ -61,7 +61,7 @@ See [AWS_DEPLOYMENT.md](./AWS_DEPLOYMENT.md) for detailed deployment instruction
 
 ### Technology Stack
 
-- **Runtime**: Node.js 20
+- **Runtime**: Node.js 22
 - **Image Processing**: Sharp
 - **Cloud Platforms**: AWS Lambda, Azure Functions
 - **Storage**: AWS S3, Azure Blob Storage, or local filesystem
@@ -98,8 +98,10 @@ See [AWS_DEPLOYMENT.md](./AWS_DEPLOYMENT.md) for detailed deployment instruction
 | `/fbauth-logout` | GET | Logout (destroy session) |
 | `/fbauth-me` | GET | Get current user info |
 | `/fbpages` | GET | List connected Facebook pages |
-| `/fbpages?id={page_id}` | DELETE | Remove a Facebook page |
+| `/fbpages?id={page_id}&enabled={true\|false}` | PATCH | Toggle page enabled status |
+| `/fbpages?sync=1` | POST | Sync pages from Facebook |
 | `/fbpages?refresh=1` | POST | Trigger manual event refresh |
+| `/storageUrl` | GET | Get public URL for data storage |
 
 ## Configuration
 
@@ -123,7 +125,7 @@ See [AWS_DEPLOYMENT.md](./AWS_DEPLOYMENT.md) for detailed deployment instruction
 ## Project Structure
 
 ```
-gigback/
+gigiau-2/
 ├── api/
 │   ├── collect/              # Main collection orchestrator
 │   ├── events/               # Venue scrapers (20+ handlers)
@@ -136,6 +138,7 @@ gigback/
 │   ├── fbauth/              # Facebook OAuth (login/callback/logout/me)
 │   ├── fbpages/             # Facebook page management
 │   ├── TestFileStore/       # Storage tests
+│   ├── storageUrl/          # Returns public storage URLs
 │   └── SharedCode/
 │       ├── filestorer.js    # File storage abstraction
 │       ├── tableStorer.js   # Table storage abstraction
@@ -165,7 +168,7 @@ The application supports connecting Facebook Pages to automatically import their
 1. Create a Facebook App at https://developers.facebook.com
 2. Configure OAuth redirect URI: `https://yourdomain.com/fbauth-callback`
 3. Set required environment variables (see Configuration above)
-4. Request permissions: `pages_manage_metadata`, `pages_read_engagement`, `pages_show_list`
+4. Request permissions: `pages_read_engagement`, `pages_show_list`
 
 **Usage:**
 1. Visit `/fbadmin.html`

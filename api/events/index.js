@@ -18,6 +18,15 @@ function datex(dateString) {
     return dateString.trim().replace(/^[A-Z][a-z]+ +/, "").replace(/st|nd|rd|th|at/, "").replace(/\s+/sg, " ").trim();
 }
 
+function londonTime(str) {
+    // Parse a naive datetime string (e.g. "2026-03-28T19:30") as Europe/London local time.
+    // new Date(str) is system-timezone-dependent; AWS Lambda runs UTC so BST events come out 1h late.
+    const approx = new Date(str + "Z");
+    const lonStr = approx.toLocaleString("sv", { timeZone: "Europe/London" });
+    const offset = new Date(lonStr.replace(" ", "T") + "Z") - approx;
+    return new Date(approx - offset);
+}
+
 function sl(en, cy) {
     // Security: Escape HTML to prevent XSS attacks
     return `<span class='en'>${escapeHtml(en)}</span><span class='cy'>${escapeHtml(cy)}</span>`;
@@ -990,11 +999,13 @@ let gigio = async (source, defaultVenue = "", defaultURL = "") => {
         const json = m(response, /<pre id='gigiau'.*?>(.*?)<\/pre>/s);
         const events = JSON.parse(json);
         r = events.map(event => {
-            let dateRange = new Date(event.meta.dtstart).toLocaleString("en-GB", DMYhmformat).replace(", 00:00", "").replace(", 01:00", "");
+            const dtStart = londonTime(event.meta.dtstart);
+            let dateRange = dtStart.toLocaleString("en-GB", DMYhmformat).replace(", 00:00", "");
             if (event.meta.dtstart.substring(0,10) != event.meta.dtend.substring(0,10)) {
                 dateRange += " - ";
-                dateRange += new Date(event.meta.dtend).toLocaleString("en-GB", DMYformat);
+                dateRange += londonTime(event.meta.dtend).toLocaleString("en-GB", DMYformat);
             }
+            //console.log(`${event.title} ${event.meta.dtstart}, ${dtStart.valueOf()} ${dateRange}`);
             return {
                 title: langSplit(event.title),
                 image: event.pic,
@@ -1002,7 +1013,7 @@ let gigio = async (source, defaultVenue = "", defaultURL = "") => {
                 venue: langSplit(event.meta.venue || defaultVenue),
                 text: event.content,
                 subtitle: langSplit(event.meta.dtinfo || ""),
-                dt: new Date(event.meta.dtstart).valueOf(),
+                dt: dtStart.valueOf(),
                 date: dateRange,
                 category: (event.title.indexOf("NTLive") < 0 ? "live" : "broadcast")
             }
