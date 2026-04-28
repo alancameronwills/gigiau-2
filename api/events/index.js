@@ -34,9 +34,11 @@ function sl(en, cy) {
 
 function stripText(s) {
     return s.replace(/https:\/\/[-a-z0-9+_?=&#%\/.:]* */gi, " ")
+        .replace(/&nbsp;/g, " ")
         .replace(/<\/p>|<\/div>|<\/li>|<br.*?>/sg, "¬¬¬")
-        .replace(/<.*?>/sg, "")
+        .replace(/<.*?>/sg, " ")
         .replace(/[\s\n]+/sg, " ")
+        .replace(/  +/g, " ")
         .replace(/¬¬[¬ ]+/sg, " ¬ ")
         .trim();
 }
@@ -169,7 +171,7 @@ let handlers = [];
     return events;
 }).friendly = "Fishguard Folk";
 
-
+/*
 (handlers["othervoices"] = async () => {
     let events = ["29 October 2026", "30 October 2026", "31 October 2026"].map(date => {
         return {
@@ -185,6 +187,7 @@ let handlers = [];
     });
     return events;
 }).friendly = "Other Voices";
+*/
 
 
 (handlers["ceridwen"] = async () => {
@@ -952,11 +955,11 @@ let ticketsource = async (tsid) => {
     return await ticketsolve("span-arts", { live: /./ });
 }).friendly = "SPAN Arts";
 
-/*  -- NOW GOT FROM WEBSITE
+
 (handlers["stdavids"] = async () => {
     return await ticketsolve("stdavidscathedral", { live: /./ });
-}).friendly = "St Davids Cathedral";
-*/
+}).friendly = "St Davids Cathedral Festival";
+
 
 /* Doesn't work from server, prohibited by TicketSource */
 (handlers["_attic"] = async () => {
@@ -1154,6 +1157,7 @@ const azureHandler = async function (context, req) {
                 //console.log(venue);
                 r = await handler(x);
                 //console.log(venue, r.length);
+                r.forEach(rr => rr.source = venue);
             }
         } else {
             let kk = Object.keys(handlers);
