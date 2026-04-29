@@ -181,7 +181,7 @@ async function handleCallback(context, req) {
         const isSuperuser = SUPERUSER_IDS.includes(facebook_id);
 
         // Step 4: Store user in database
-        const userTable = TableStorer('gigiaufbusers');
+        const userTable = TableStorer(process.env.TABLE_FBUSERS || 'gigiaufbusers');
         await userTable.upsertEntity({
             partitionKey: 'user',
             rowKey: facebook_id,
@@ -219,7 +219,7 @@ async function handleCallback(context, req) {
         console.log(`[FBAuth] Facebook returned ${allPages.length} pages total for user ${facebook_id}`);
 
         if (allPages.length > 0) {
-            const pageTable = TableStorer('gigiaufbpages');
+            const pageTable = TableStorer(process.env.TABLE_FBPAGES || 'gigiaufbpages');
 
             for (const page of allPages) {
                 // Check if page already exists to preserve enabled status

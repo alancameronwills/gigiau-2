@@ -34,7 +34,7 @@ async function generateSession(facebook_id) {
     );
 
     // Store session in table
-    const sessionTable = TableStorer('gigiaufbsessions');
+    const sessionTable = TableStorer(process.env.TABLE_FBSESSIONS || 'gigiaufbsessions');
     await sessionTable.upsertEntity({
         partitionKey: 'session',
         rowKey: sessionId,
@@ -63,7 +63,7 @@ async function validateSession(token) {
         const decoded = jwt.verify(token, JWT_SECRET);
 
         // Check session exists in table
-        const sessionTable = TableStorer('gigiaufbsessions');
+        const sessionTable = TableStorer(process.env.TABLE_FBSESSIONS || 'gigiaufbsessions');
         const session = await sessionTable.getEntity('session', decoded.jti);
 
         if (!session) {
@@ -77,7 +77,7 @@ async function validateSession(token) {
         }
 
         // Get user info
-        const userTable = TableStorer('gigiaufbusers');
+        const userTable = TableStorer(process.env.TABLE_FBUSERS || 'gigiaufbusers');
         const user = await userTable.getEntity('user', session.facebook_id);
 
         if (!user) {
@@ -107,7 +107,7 @@ async function destroySession(token) {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        const sessionTable = TableStorer('gigiaufbsessions');
+        const sessionTable = TableStorer(process.env.TABLE_FBSESSIONS || 'gigiaufbsessions');
         await sessionTable.deleteEntity('session', decoded.jti);
         return true;
     } catch (error) {

@@ -13,7 +13,7 @@ const DMhmformat = { weekday: "short", day: "numeric", month: "short", hour: "2-
  * @returns {Promise<Array>} Array of event objects in standard format
  */
 async function fetchFacebookEvents() {
-    const pageTable = TableStorer('gigiaufbpages');
+    const pageTable = TableStorer(process.env.TABLE_FBPAGES || 'gigiaufbpages');
     const allEvents = [];
 
     // Get all enabled pages

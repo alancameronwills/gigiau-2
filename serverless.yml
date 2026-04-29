@@ -28,6 +28,12 @@ provider:
     NODE_ENV: production
     S3_BUCKET_NAME: ${self:custom.bucketName}
     STAGE: ${self:provider.stage}
+    # DynamoDB table names (prod has no suffix; dev has -dev suffix)
+    TABLE_COUNTERS: gigiaucounters${self:custom.tableSuffix.${self:provider.stage}}
+    TABLE_COUNTERDAYS: gigiaucounterdays${self:custom.tableSuffix.${self:provider.stage}}
+    TABLE_FBUSERS: gigiaufbusers${self:custom.tableSuffix.${self:provider.stage}}
+    TABLE_FBPAGES: gigiaufbpages${self:custom.tableSuffix.${self:provider.stage}}
+    TABLE_FBSESSIONS: gigiaufbsessions${self:custom.tableSuffix.${self:provider.stage}}
     # Facebook OAuth configuration
     FB_APP_ID: ${env:FB_APP_ID}
     FB_APP_SECRET: ${env:FB_APP_SECRET}
@@ -68,8 +74,8 @@ provider:
             - dynamodb:Scan
             - dynamodb:Query
           Resource:
-            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaucounters
-            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaucounterdays
+            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaucounters${self:custom.tableSuffix.${self:provider.stage}}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaucounterdays${self:custom.tableSuffix.${self:provider.stage}}
 
         # DynamoDB permissions for Facebook integration
         - Effect: Allow
@@ -81,12 +87,15 @@ provider:
             - dynamodb:Scan
             - dynamodb:Query
           Resource:
-            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaufbusers
-            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaufbpages
-            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaufbsessions
+            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaufbusers${self:custom.tableSuffix.${self:provider.stage}}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaufbpages${self:custom.tableSuffix.${self:provider.stage}}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/gigiaufbsessions${self:custom.tableSuffix.${self:provider.stage}}
 
 custom:
   bucketName: gigsmash-events-${self:provider.stage}
+  tableSuffix:
+    prod: ''
+    dev: '-dev'
 
 functions:
   # Event listings from venue scrapers
@@ -228,7 +237,7 @@ resources:
     CountersTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: gigiaucounters
+        TableName: gigiaucounters${self:custom.tableSuffix.${self:provider.stage}}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: partitionKey
@@ -245,7 +254,7 @@ resources:
     CounterDaysTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: gigiaucounterdays
+        TableName: gigiaucounterdays${self:custom.tableSuffix.${self:provider.stage}}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: partitionKey
@@ -262,7 +271,7 @@ resources:
     FbUsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: gigiaufbusers
+        TableName: gigiaufbusers${self:custom.tableSuffix.${self:provider.stage}}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: partitionKey
@@ -279,7 +288,7 @@ resources:
     FbPagesTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: gigiaufbpages
+        TableName: gigiaufbpages${self:custom.tableSuffix.${self:provider.stage}}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: partitionKey
@@ -296,7 +305,7 @@ resources:
     FbSessionsTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: gigiaufbsessions
+        TableName: gigiaufbsessions${self:custom.tableSuffix.${self:provider.stage}}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: partitionKey

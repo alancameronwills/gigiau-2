@@ -90,8 +90,8 @@ async function azureHandler(context, req) {
  * Handle GET /fbpages - List pages
  */
 async function handleListPages(context, req, user) {
-    const pageTable = TableStorer('gigiaufbpages');
-    const userTable = TableStorer('gigiaufbusers');
+    const pageTable = TableStorer(process.env.TABLE_FBPAGES || 'gigiaufbpages');
+    const userTable = TableStorer(process.env.TABLE_FBUSERS || 'gigiaufbusers');
     const pages = [];
 
     // Fetch all pages
@@ -170,7 +170,7 @@ async function handleTogglePage(context, req, user) {
     }
 
     const enabled = enabledParam === 'true' || enabledParam === '1';
-    const pageTable = TableStorer('gigiaufbpages');
+    const pageTable = TableStorer(process.env.TABLE_FBPAGES || 'gigiaufbpages');
 
     // Get the page
     const page = await pageTable.getEntity('page', pageId);
@@ -223,8 +223,8 @@ async function handleTogglePage(context, req, user) {
  * Handle POST /fbpages?sync=1 - Sync pages from Facebook using stored token
  */
 async function handleSyncPages(context, req, user) {
-    const userTable = TableStorer('gigiaufbusers');
-    const pageTable = TableStorer('gigiaufbpages');
+    const userTable = TableStorer(process.env.TABLE_FBUSERS || 'gigiaufbusers');
+    const pageTable = TableStorer(process.env.TABLE_FBPAGES || 'gigiaufbpages');
 
     // Get user's stored access token
     let userData;

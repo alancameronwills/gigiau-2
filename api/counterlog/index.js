@@ -1,9 +1,9 @@
 const { TableStorer } = require("../SharedCode/tableStorer");
 
 async function azureFunction(context, myTimer) {
-    const countersClient = TableStorer("gigiaucounters");
+    const countersClient = TableStorer(process.env.TABLE_COUNTERS || "gigiaucounters");
 
-    const daysClient = TableStorer("gigiaucounterdays");
+    const daysClient = TableStorer(process.env.TABLE_COUNTERDAYS || "gigiaucounterdays");
 
     let counters = [];
     for await (const row of countersClient.listEntities()) {

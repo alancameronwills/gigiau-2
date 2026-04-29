@@ -53,7 +53,7 @@ async function azureFunction(context, req) {
 
 async function currentCounter (context, series, counter) {
     let nowISO = new Date().toISOString().substring(0,19);
-    const tableClient = TableStorer("gigiaucounters");
+    const tableClient = TableStorer(process.env.TABLE_COUNTERS || "gigiaucounters");
     // https://learn.microsoft.com/en-us/javascript/api/overview/azure/tables?view=azure-node-latest
         
     if (series && counter) {                                                                                                                                                                                                                                                                          
@@ -92,7 +92,7 @@ async function currentCounter (context, series, counter) {
 }
 
 async function history(context, series, counter) {
-    const tableClient = TableStorer("gigiaucounterdays");
+    const tableClient = TableStorer(process.env.TABLE_COUNTERDAYS || "gigiaucounterdays");
     // https://learn.microsoft.com/en-us/javascript/api/overview/azure/tables?view=azure-node-latest
     let rows = [];
     for await (const row of tableClient.listEntities()) {
