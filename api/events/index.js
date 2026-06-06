@@ -961,6 +961,12 @@ let ticketsource = async (tsid) => {
 }).friendly = "St Davids Cathedral Festival";
 
 
+(handlers["felinfach"] = async () => {
+    return await ticketsolve("theatrfelinfach", { live: /./ });
+}).friendly = "Theatr Felinfach";
+
+
+
 /* Doesn't work from server, prohibited by TicketSource */
 (handlers["_attic"] = async () => {
     return await ticketsource("attic");
