@@ -42,6 +42,21 @@ npm run deploy:prod
 
 See [AWS_DEPLOYMENT.md](./AWS_DEPLOYMENT.md) for detailed deployment instructions.
 
+### Deploy to Azure
+
+Azure Functions are deployed with the [Azure Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local), which zips the project directory (including `host.json`) and pushes it to the Function App:
+
+```bash
+# Deploy functions (run from the repo root)
+func azure functionapp publish <app-name>
+```
+
+`host.json` at the repo root ships with this deploy and configures the runtime — including Application Insights logging levels and sampling. Application Settings (connection strings, `JWT_SECRET`, `FB_*`, etc.) are set in the Azure Portal, not in the package.
+
+> **Note on Sharp**: `func ... publish` zips the local `node_modules`, including Sharp's platform-native binaries. When publishing from Windows to a Linux Function App, deploy with remote build (`func azure functionapp publish <app-name> --build remote`) or publish from Linux so the correct Sharp binaries are installed.
+
+See [FACEBOOK_INTEGRATION.md](./FACEBOOK_INTEGRATION.md) for the Facebook-related Azure setup.
+
 ## Architecture
 
 ### Supported Venues (20+)
