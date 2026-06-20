@@ -1022,7 +1022,7 @@ let gigio = async (source, defaultVenue = "", defaultURL = "") => {
                 venue: langSplit(event.meta.venue || defaultVenue),
                 text: event.content,
                 subtitle: langSplit(event.meta.dtinfo || ""),
-                dt: dtStart.valueOf(),
+                dt: Math.max(dtStart.valueOf(),Date.now()),
                 date: dateRange,
                 category: (event.title.indexOf("NTLive") < 0 ? "live" : "broadcast")
             }
