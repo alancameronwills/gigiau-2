@@ -456,20 +456,22 @@ let handlers = [];
     let r = [];
     try {
         let root = "https://thequeenshall.org.uk";
-        let source = await ftext(root + "/whats-on/live-events");
+        let source = await ftext(root + "/whats-on/all-events");
         let eventSection = m(source, /<div class="main-area.*?>(.*)/s).replace(/<div class="noPrint/, "");
         let events = eventSection.match(/<article.*?>.*?<\/article>/gs);
         events.forEach(event => {
-            let ri = {};
-            ri.url = m(event, /href="(.*?)"/);
-            ri.image = m(event, /src="(.*?)"/);
-            ri.title = m(event, /<[^>]+event-title.*?>(.*?)</s);
-            ri.date = m(event, /<[^>]+event-date.*?>(.*?)</s);
-            ri.dt = new Date(ri.date.replace(",", "")).valueOf() || 0;
-            ri.text = "";
-            ri.venue = "Queens Hall Narberth";
-            ri.category = "live"; //(event.match(/<[^>]+badge-event.*?>.*?</gs)?.map(b => m(b, />(.*)</s))?.join(", ") || "").toLowerCase();
-            r.push(ri);
+            if (event.match(/badge-event-bocs-music-bar|badge-event-films|badge-event-market/)) {
+                let ri = {};
+                ri.url = m(event, /href="(.*?)"/);
+                ri.image = m(event, /src="(.*?)"/);
+                ri.title = m(event, /<[^>]+event-title.*?>(.*?)</s);
+                ri.date = m(event, /<[^>]+event-date.*?>(.*?)</s);
+                ri.dt = new Date(ri.date.replace(",", "")).valueOf() || 0;
+                ri.text = "";
+                ri.venue = "Queens Hall Narberth";
+                ri.category = (event.match(/badge-event-films/) ? "film" : "live");
+                r.push(ri);
+            }
         });
         await getDescriptions(r, /<div[^>]*event-description.*?<div.*?>(.*?)<\/div>/s);
     } catch (e) { return { e: e.toString() }; }
@@ -1010,7 +1012,7 @@ let gigio = async (source, defaultVenue = "", defaultURL = "") => {
         r = events.map(event => {
             const dtStart = londonTime(event.meta.dtstart);
             let dateRange = dtStart.toLocaleString("en-GB", DMYhmformat).replace(", 00:00", "");
-            if (event.meta.dtstart.substring(0,10) != event.meta.dtend.substring(0,10)) {
+            if (event.meta.dtstart.substring(0, 10) != event.meta.dtend.substring(0, 10)) {
                 dateRange += " - ";
                 dateRange += londonTime(event.meta.dtend).toLocaleString("en-GB", DMYformat);
             }
@@ -1022,7 +1024,7 @@ let gigio = async (source, defaultVenue = "", defaultURL = "") => {
                 venue: langSplit(event.meta.venue || defaultVenue),
                 text: event.content,
                 subtitle: langSplit(event.meta.dtinfo || ""),
-                dt: Math.max(dtStart.valueOf(),Date.now()),
+                dt: Math.max(dtStart.valueOf(), Date.now()),
                 date: dateRange,
                 category: (event.title.indexOf("NTLive") < 0 ? "live" : "broadcast")
             }
@@ -1095,7 +1097,7 @@ handlers["cordyfed"] = await ticketsource("cor-dyfed-choir");
             let jsonMatch = v.match(/\{.*\}/s)[0];
             let jso = JSON.parse(jsonMatch);
             // Cope with BST bug in Rhosygilwen 
-            let date = new Date(jso.startDate.replace("+01:","+02:"));
+            let date = new Date(jso.startDate.replace("+01:", "+02:"));
             let dateString = date.toLocaleString("en-GB", DMYhmformat);
             r.push({
                 date: dateString,
