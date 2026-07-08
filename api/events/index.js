@@ -798,6 +798,9 @@ let handlers = [];
         try {
             let ri = {};
             ri.image = m(div, /<img [^>]*src=['"](.*?)['"]/s);
+            if (ri.image && ri.image.indexOf('/') == 0) {
+                ri.image = "https://www.stdavidscathedral.org.uk" + ri.image;
+            }
             ri.url = m(div, /href=['"](.*?)['"]/s);
             if (ri.url.indexOf("https" != 0)) {
                 ri.url = "https://www.stdavidscathedral.org.uk" + ri.url;
