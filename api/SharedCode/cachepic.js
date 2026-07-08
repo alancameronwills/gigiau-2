@@ -17,8 +17,8 @@ class Cache {
         this.#picSize = picSize;
     }
 
-    async #fetchfile(url, sendHeaders = false) {
-        let headers = !sendHeaders ? null : {
+    async #fetchfile(url, sendHeaders = false, timeoutMs = 15000) {
+        let headers = !sendHeaders ? {} : {
             headers: {
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/jpeg,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                 "Accept-Encoding": "gzip, deflate, br, zstd",
@@ -36,7 +36,9 @@ class Cache {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
             }
         };
-        return await fetch(url, headers);
+        // Abort a stalled download so a single unresponsive image server
+        // can't hang the whole collection run (fetch has no default timeout).
+        return await fetch(url, { ...headers, signal: AbortSignal.timeout(timeoutMs) });
     }
 
     #hashUrl(url) {
@@ -71,8 +73,15 @@ class Cache {
      * @returns {pic ArrayBuffer, name}
   */
     async getCache(url, get = true, name, size = 300) {
-        // Security: Validate URL to prevent SSRF attacks
-        url = validateImageUrl(url);
+        // Security: Validate URL to prevent SSRF attacks.
+        // A single bad URL must not abort the whole collection run, so fail
+        // gracefully here just like a failed download below.
+        try {
+            url = validateImageUrl(url);
+        } catch (e) {
+            this.#context.log(`Invalid image URL ${url} ${e.message}`);
+            return get ? { pic: new Uint8Array(), name: url, error: e } : { name: url, error: e };
+        }
 
         let hashName = name || this.#hashUrl(url);
         //this.#context.log(hashName);
