@@ -143,7 +143,9 @@ a:link {
 #searchButton::after {
     content: "🔍";
 }
-
+#addGigButton::after {
+    content: "➕";
+}
 #upfrontInstallButton::after {
     content: "⏬";
 }
@@ -153,6 +155,7 @@ a:link {
     border-radius: 50%;
 }
 
+#addGigButton:hover::after,
 #upfrontInstallButton:hover::after,
 #searchButton:hover::after {
     transform: scale(1.2);

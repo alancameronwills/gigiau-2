@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/x-icon" href="gigiau.ico">
     <link rel="apple-touch-icon" href="gigiau-fav.png">
-    <link rel="stylesheet" type="text/css" href="css/gigiau.css?v=2602190128" />
+    <link rel="stylesheet" type="text/css" href="css/gigiau.css?v=2607201344" />
     <meta property="og:image" content="/gigiau.png">
     <meta property="og:title" content="Gigiau" />
     <meta property="og:url" content="https://gigiau.uk/" />
@@ -549,6 +549,9 @@
                     scrollToMonth(1 * e.currentTarget.dataset['month']);
                 }));
         }
+        function addGig() {
+            window.location = "https://gigiau.uk/pawb/add";
+        }
         function toggleIaith() {
             document.body.classList.toggle("cy");
             localStorage.setItem("iaith", "" + document.body.classList.contains("cy"));
@@ -560,9 +563,10 @@
         }
         function setSideButtons() {
             let sideButtonHtml = [];
-            sideButtonHtml.push("<div id='favoriteButton' onclick='Favorites.scrollToNext()'>&nbsp;</div>");
-            sideButtonHtml.push("<div id='searchButton' onclick='TextFilter.toggle()'>&nbsp;</div>");
-            sideButtonHtml.push("<div id='upfrontInstallButton' onclick='installer()' class='installButton hide')>&nbsp;</div>");
+            sideButtonHtml.push("<div id='favoriteButton' title='favourites' onclick='Favorites.scrollToNext()'>&nbsp;</div>");
+            sideButtonHtml.push("<div id='searchButton' title='search' onclick='TextFilter.toggle()'>&nbsp;</div>");
+            sideButtonHtml.push("<div id='addGigButton' title='add your gig' onclick='addGig()' class='addGigButton hide')>&nbsp;</div>");
+            sideButtonHtml.push("<div id='upfrontInstallButton' title='install' onclick='installer()' class='installButton hide')>&nbsp;</div>");
             document.querySelector("#sideButtons").innerHTML = sideButtonHtml.join("\n");
         }
 
@@ -740,6 +744,7 @@
                 <button onclick="about()"><span class="en">About</span><span class="cy">Am hyn</span></button>
                 <button onclick="sources()"><span class="en">Sources</span><span class="cy">Ffynonellau</span></button>
                 <button onclick="share()"><span class="en">Share</span><span class="cy">Rhannu</span></button>
+                <button onclick="addGig()"><span class="en">Add gig</span><span class="cy">Ychwanegu gig</span></button>
                 <button id="installButton" class="installButton hide" onclick="installer()"><span
                         class="en">Install</span><span class="cy">Gosod</span></button>
             </div>
