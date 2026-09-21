@@ -348,29 +348,36 @@ let handlers = [];
     return r;
 }).friendly = "Fishguard Festival";
 
+/*
 (handlers["filmonsunday"] = async () => {
     let r = [];
     let extract = body => {
-        let events = body.match(/<li .*?>.*?<\/li>/gs);
+        console.log("FilmonSunday: ", body.substring(0, 80));
+        let events = body.split(/jet-listing-grid__item.*?>/);
+        console.log("Filmonsunday: ", events.length, events[0].substring(0, 80));
         events.forEach(event => {
-            let ri = {};
-            ri.image = m(event, /src="(https:.*?)"/s);
-            ri.title = m(event, /eg-film-grid-element-0.*?>(.*?)<\/div>/s);
-            ri.date = m(event, /eg-film-grid-element-25.*?>(.*?)<\/div>/s);
-            ri.dt = new Date(datex(ri.date)).valueOf();
-            ri.category = "film";
-            ri.url = m(event, /href="(https:\/\/filmon.*?)"/s);
-            ri.venue = "Templeton Village Hall";
-            r.push(ri);
+            try {
+                let ri = {};
+                ri.image = m(event, /src="(https:.*?)"/s);
+                ri.title = m(event, /elementor-heading-title.*?>(.*?)<\/div>/s);
+                ri.date = m(event, /jet-listing-dynamic-field__content.*?>(.*?)<\/div>/s);
+                ri.dt = new Date(datex(ri.date)).valueOf();
+                ri.category = "film";
+                ri.url = m(event, /href="(https:\/\/filmon.*?)"/s) || "https:/filmonsunday.co.uk";
+                ri.venue = "Templeton Village Hall";
+                r.push(ri);
+            }
+            catch { }
         });
     }
+    
     try {
         let sourceUrl = "https://filmonsunday.co.uk";
         let source = await ftext(sourceUrl);
-        let eventSection = m(source, /<article[^>]*portfolio.*?>(.*)<\/article>/s);
+        let eventSection = m(source, /<body(.*)/s);
         extract(eventSection);
-
-        /* Load more */
+    
+        // Load more 
         //console.log(source);
         let lmItems = m(source, /loadMoreItems:(.*?)\]\]\]/s);
         let lm = {
@@ -394,9 +401,12 @@ let handlers = [];
                 extract(more.data);
             }
         }
+            
     } catch (e) { r.push({ e: e.toString() }); console.log(e); }
+    
     return r;
 }).friendly = "Film On Sunday";
+*/
 
 
 (handlers["narberthjazz"] = async () => {
@@ -759,6 +769,7 @@ let handlers = [];
     return x ? fromGwaun : fromSavoy;
 }).friendly = "Theatr Gwaun";
 
+/*
 (handlers["moylgrove"] = async () => {
     let source = await ftext("https://moylgrove.wales/events");
     let ul = m(source, /<ul[^>]*eventList.*?<\/ul>/s, 0);
@@ -788,6 +799,8 @@ let handlers = [];
     });
     return r;
 }).friendly = "Moylegrove";
+*/
+
 
 (handlers["stdavidscathedral"] = async () => {
     let source = await ftext("https://www.stdavidscathedral.org.uk/whats-on/events");
@@ -1039,6 +1052,14 @@ let gigio = async (source, defaultVenue = "", defaultURL = "") => {
 (handlers["pawb"] = async () => {
     return await gigio("https://www.gigiau.uk/pawb/?json=1");
 }).friendly = "Pawb";
+
+(handlers["moylgrove"] = async () => {
+    return await gigio("https://moylgrove.wales/events/?json=1",
+        "Moylgrove Old School Hall|Neuadd Yr Hen Ysgol Trewyddel",
+        "https://moylgrove.wales/events");
+}).friendly = "Moylgrove";
+
+
 
 (handlers["newportmh"] = async () => {
     return await gigio("https://newportmemorialhall.co.uk/whats-on/?json=1",
