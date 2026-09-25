@@ -252,11 +252,11 @@ a:link {
 }
 
 .from-cache {
-    color: blue;
+    color: gray;
 }
 
 .empty-promoter {
-    color: gray;
+    color: lightgray;
 }
 
 @media (max-width:600px) {
