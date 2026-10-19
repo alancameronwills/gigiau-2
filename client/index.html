@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-gb">
-<!-- 2026-03-01 17:42-->
+<!-- 2026-10-19 17:29-->
 
 <head>
     <meta charset="UTF-8">
@@ -23,6 +23,8 @@
         if (location.protocol == "http:" && location.host != "localhost") {
             location.replace(location.href.replace("http:", "https:"));
         }
+
+        setTimeout(()=>{location.reload();}, 1000*3600*6);
 
         var platform = "aws";
         if (location.host == "localhost" && !location.search.match(/server/)) {
@@ -377,7 +379,7 @@
                     <label for='${p}filter'>${events.promoters[p]}</label></div>`).join('\n');
                 document.getElementById("promoterMenu").innerHTML =
                     `<div><div><input type="checkbox" onclick="PromoterFilters.swogglePromoters()" id="promoterSwoggle"/>
-                        <label for="promoterAll">~~~</label></div>${menuItems}</div>`;
+                        <label for="promoterSwoggle">~~~</label></div>${menuItems}</div>`;
                 menuClick("#promoterMenu>div", null);
             }
             static swogglePromoters() {
