@@ -291,7 +291,7 @@ a:link {
     right: 4px;
     border-radius: 4px;
     font: var(--menufont);
-    z-index: 2;
+    z-index: 30;
 }
 
 #searchField:not(.reveal) {
@@ -421,6 +421,7 @@ a:link {
 .head {
     background-color: #e4e4e4;
     display: flex;
+    z-index: 20;
 }
 
 .head img {
@@ -469,6 +470,7 @@ body:not(.showMenus) #monthMenu {
 #menu {
     stroke: black;
     border-radius: 4px;
+    z-index: 30;
 }
 
 #menu:hover {
@@ -560,6 +562,14 @@ body.demo {
     overflow: hidden;
     #demoSplash {
         display: flex !important;
+    }
+    .head {
+        position: sticky;
+        top: 0;
+        overflow: clip;
+        img {
+            margin: -25px 0 -20px 0;
+        }
     }
 }
 .demoArrow
