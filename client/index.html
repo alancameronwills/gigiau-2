@@ -255,7 +255,9 @@
         var monthIdCount = 0;
 
         function showOne(show, ix) {
-            const cacheImage = show?.image ? data + show.image.replace("client/pix/", "") : "";
+            const cacheImage = show?.image
+                ? (/^https?:\/\//i.test(show.image) ? show.image : data + show.image.replace("client/pix/", ""))
+                : "";
             const ifHidden = isShowVisible(show) ? "" : "hide";
             let dateHead = "";
             if (show.newDate) {
