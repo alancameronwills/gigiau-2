@@ -1,3 +1,5 @@
+@charset "UTF-8";
+
 :root {
     --font: 1.2rem Arial, Geneva, Helvetica, sans-serif;
     --menufont: 1rem Arial, Geneva, Helvetica, sans-serif;
@@ -97,7 +99,7 @@ a:link {
 }
 
 .show.favorite::after {
-    content: "😊";
+    content: "\1f60a"; /* 😊 */ 
     position: absolute;
     top: 0;
     right: 0;
@@ -108,7 +110,7 @@ a:link {
 }
 
 .show:not(.favorite)::after {
-    content: "◯";
+    content: "\25ef"; /* ◯ */
     position: absolute;
     top: 0;
     right: 0;
@@ -116,11 +118,11 @@ a:link {
 
 
 .table.prompt-favorites .show:not(.favorite)::after {
-    content: "🔴";
+    content: "\1f534"; /* 🔴 */
 }
 
 .show:not(.favorite):hover::after {
-    content: "😊";
+    content: "\1f60a"; /* 😊 */
     opacity: 20%;
 }
 
@@ -137,17 +139,17 @@ a:link {
 }
 
 #favoriteButton::after {
-    content: "😊";
+    content: "\1f60a"; /* 😊 */
 }
 
 #searchButton::after {
-    content: "🔍";
+    content: "\1f50d"; /* 🔍 */
 }
 #addGigButton::after {
-    content: "➕";
+    content: "\2795"; /* ➕ */
 }
 #upfrontInstallButton::after {
-    content: "⏬";
+    content: "\23ec"; /* ⏬ */
 }
 
 #favoriteButton:hover::after {
@@ -205,7 +207,7 @@ a:link {
 }
 
 .description-container:not(.expand) .description:not(:empty)::after {
-    content: "• • •";
+    content: "\2022  \2022  \2022";
 }
 
 .expand .description:not(:empty)::after {
@@ -350,7 +352,7 @@ a:link {
 
 .page::after,
 .slideout-content::after {
-    content: "◀";
+    content: "\25c0"; /* ◀ */
     position: absolute;
     bottom: 0;
     right: 0;
