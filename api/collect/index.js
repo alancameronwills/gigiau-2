@@ -137,7 +137,12 @@ async function replaceImageUrls(shows) {
         show.imagesource = show.image;
         if (show.image) {
             const cacheInfo = await cache.getCache(show.image, false);
-            show.image = '/pix/' + cacheInfo.name;
+            if (cacheInfo.error) {
+                // Couldn't cache it: keep the original URL rather than a bogus /pix/https://... path
+                fault(`Image failed for ${show.promoter || ""} "${show.title}": ${cacheInfo.error.message || cacheInfo.error}`);
+            } else {
+                show.image = '/pix/' + cacheInfo.name;
+            }
         }
         await persistentStatus(`Converting images: ${i} / ${showsLength}`);
     }
@@ -326,8 +331,8 @@ const azureHandler = async function (context, req) {
             if (await collectLock(true)) {
                 try {
                     const cacheInfo = await cache.getCache(req.query.url, false);
-                    cachedName = '/pix/' + cacheInfo.name;
-                    await persistentStatus("Done " + JSON.stringify(cacheInfo));
+                    cachedName = cacheInfo.error ? req.query.url : '/pix/' + cacheInfo.name;
+                    await persistentStatus("Done " + JSON.stringify({ ...cacheInfo, error: cacheInfo.error?.message }));
                 }
                 catch (e) {
                     console.log(e.stack);

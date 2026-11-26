@@ -20,19 +20,17 @@ class Cache {
     async #fetchfile(url, sendHeaders = false, timeoutMs = 15000) {
         let headers = !sendHeaders ? {} : {
             headers: {
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/jpeg,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                // Mimic a browser loading an <img> from the promoter's own page
+                "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
                 "Accept-Encoding": "gzip, deflate, br, zstd",
                 "Accept-Language": "en-GB,en;q=0.9",
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache",
-                "Priority": "u=0,i",
+                "Referer": new URL(url).origin + "/",
                 "Sec-Ch-Ua": '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
                 "Sec-Ch-Ua-Mobile": "?0",
                 "Sec-Ch-Ua-Platform": "Windows",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
-                "Upgrade-Insecure-Requests": 1,
+                "Sec-Fetch-Dest": "image",
+                "Sec-Fetch-Mode": "no-cors",
+                "Sec-Fetch-Site": "same-origin",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
             }
         };
@@ -95,7 +93,15 @@ class Cache {
                 const MAX_FILE_SIZE = 10 * 1024 * 1024;  // 10MB
                 const MAX_DIMENSION = 10000;  // 10000px
 
-                const blob = await this.#fetchfile(url, true).then(r => r.blob());
+                const response = await this.#fetchfile(url, true);
+                if (!response.ok) {
+                    // Surface the real cause (e.g. 403 from a WAF) instead of a confusing sharp error
+                    throw new Error(`HTTP ${response.status} ${response.statusText} content-type=${response.headers.get("content-type")} server=${response.headers.get("server")}`);
+                }
+                const blob = await response.blob();
+                if (!(blob.type || "").startsWith("image/")) {
+                    throw new Error(`Not an image: content-type=${blob.type} status=${response.status}`);
+                }
 
                 // Check file size
                 if (blob.size > MAX_FILE_SIZE) {
@@ -120,7 +126,7 @@ class Cache {
                 }
                 await this.#storer.put(storeName, fileType, resized);
             } catch (e) {
-                this.#context.log(`Couldn't convert ${url} ${e.stack}`);
+                this.#context.log(`Couldn't convert ${url} ${e.message}\n${e.stack}`);
                 if (get)
                     return { pic: new Uint8Array(), name: url, error: e }
                 else return { name: url, error: e }
