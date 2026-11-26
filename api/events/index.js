@@ -1032,13 +1032,13 @@ let gigio = async (source, defaultVenue = "", defaultURL = "") => {
                 dateRange += " - ";
                 dateRange += londonTime(event.meta.dtend).toLocaleString("en-GB", DMYformat);
             }
-            //console.log(`${event.title} ${event.meta.dtstart}, ${dtStart.valueOf()} ${dateRange}`);
+            //console.log(`${event.title} ${event.meta.bookinglink}`);
             return {
                 title: langSplit(event.title),
                 image: event.pic,
-                url: event.meta.bookinglink || defaultURL,
+                url: event.meta.bookinglink || event.link || defaultURL,
                 venue: langSplit(event.meta.venue || defaultVenue),
-                text: event.content,
+                text: event.content?.replaceAll(/\[.*?\]/g, ""),
                 subtitle: langSplit(event.meta.dtinfo || ""),
                 dt: Math.max(dtStart.valueOf(), Date.now()),
                 date: dateRange,
